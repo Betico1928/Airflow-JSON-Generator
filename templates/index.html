@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de DAG Airflow</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .tooltip-icon {
+            color: #6c757d;
+            font-size: 14px;
+            margin-left: 5px;
+            cursor: help;
+        }
+        
+        .card-header {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            font-weight: 600;
+        }
+        
+        .task-card {
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            transition: box-shadow 0.2s;
+        }
+        
+        .task-card:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .json-preview {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .cron-quick-select {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .cron-button {
+            font-size: 12px;
+            padding: 4px 8px;
+        }
+        
+        .validation-feedback {
+            display: block;
+            font-size: 0.875em;
+            margin-top: 0.25rem;
+        }
+        
+        .is-valid {
+            border-color: #28a745;
+        }
+        
+        .is-invalid {
+            border-color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="text-center mb-4">
+                    <i class="fas fa-cogs text-primary"></i>
+                    Generador de Configuración DAG - Apache Airflow
+                </h1>
+            </div>
+        </div>
+        
+        <div class="row">
+            <!-- Panel de Configuración -->
+            <div class="col-lg-8">
+                <!-- Configuración Básica del DAG -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-project-diagram"></i>
+                            Configuración Básica del DAG
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="dagConfigForm">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">
+                                        DAG ID
+                                        <i class="fas fa-info-circle tooltip-icon" 
+                                           data-bs-toggle="tooltip" 
+                                           title="Identificador único del DAG. Debe ser único en toda la instalación de Airflow."></i>
+                                    </label>
+                                    <input type="text" class="form-control" id="dag_id" name="dag_id" required>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">
+                                        Descripción
+                                        <i class="fas fa-info-circle tooltip-icon" 
+                                           data-bs-toggle="tooltip" 
+                                           title="Descripción breve del propósito del DAG."></i>
+                                    </label>
+                                    <input type="text" class="form-control" id="description" name="description">
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    Programación (Cron)
+                                    <i class="fas fa-info-circle tooltip-icon" 
+                                       data-bs-toggle="tooltip" 
+                                       title="Expresión cron que define cuándo se ejecutará el DAG. Formato: minuto hora día mes día_semana"></i>
+                                </label>
+                                
+                                <div class="cron-quick-select">
+                                    {% for key, (cron, desc) in cron_options.items() %}
+                                    <button type="button" class="btn btn-outline-secondary btn-sm cron-button" 
+                                            data-cron="{{ cron }}" data-toggle="tooltip" title="{{ desc }}">
+                                        {{ desc }}
+                                    </button>
+                                    {% endfor %}
+                                </div>
+                                
+                                <input type="text" class="form-control" id="schedule_interval" name="schedule_interval" 
+                                       placeholder="0 9 * * *">
+                                <div class="validation-feedback" id="cronValidation"></div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">
+                                        Fecha de Inicio
+                                        <i class="fas fa-info-circle tooltip-icon" 
+                                           data-bs-toggle="tooltip" 
+                                           title="Fecha y hora desde cuando el DAG empezará a ejecutarse."></i>
+                                    </label>
+                                    <input type="datetime-local" class="form-control" id="start_date" name="start_date" required>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">
+                                        Fecha de Fin (Opcional)
+                                        <i class="fas fa-info-circle tooltip-icon" 
+                                           data-bs-toggle="tooltip" 
+                                           title="Fecha hasta cuando el DAG se ejecutará. Déjalo vacío para ejecución indefinida."></i>
+                                    </label>
+                                    <input type="datetime-local" class="form-control" id="end_date" name="end_date">
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">
+                                        Tags (separados por coma)
+                                        <i class="fas fa-info-circle tooltip-icon" 
+                                           data-bs-toggle="tooltip" 
+                                           title="Etiquetas para categorizar y filtrar DAGs en la interfaz de Airflow."></i>
+                                    </label>
+                                    <input type="text" class="form-control" id="tags" name="tags" 
+                                           placeholder="etl, produccion, diario">
+                                </div>
+                                
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">
+                                        Max Ejecuciones Activas
+                                        <i class="fas fa-info-circle tooltip-icon" 
+                                           data-bs-toggle="tooltip" 
+                                           title="Número máximo de instancias del DAG que pueden ejecutarse simultáneamente."></i>
+                                    </label>
+                                    <input type="number" class="form-control" id="max_active_runs" name="max_active_runs" 
+                                           value="1" min="1">
+                                </div>
+                                
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">
+                                        Propietario
+                                        <i class="fas fa-info-circle tooltip-icon" 
+                                           data-bs-toggle="tooltip" 
+                                           title="Usuario responsable del DAG."></i>
+                                    </label>
+                                    <input type="text" class="form-control" id="owner" name="owner" value="airflow">
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-3 mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="catchup" name="catchup">
+                                        <label class="form-check-label" for="catchup">
+                                            Catchup
+                                            <i class="fas fa-info-circle tooltip-icon" 
+                                               data-bs-toggle="tooltip" 
+                                               title="Si está activado, Airflow ejecutará todas las instancias perdidas desde start_date."></i>
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-3 mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="depends_on_past" name="depends_on_past">
+                                        <label class="form-check-label" for="depends_on_past">
+                                            Depende del Pasado
+                                            <i class="fas fa-info-circle tooltip-icon" 
+                                               data-bs-toggle="tooltip" 
+                                               title="Si está activado, la tarea no se ejecutará hasta que la instancia anterior haya terminado exitosamente."></i>
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-3 mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="email_on_failure" name="email_on_failure">
+                                        <label class="form-check-label" for="email_on_failure">
+                                            Email en Fallo
+                                            <i class="fas fa-info-circle tooltip-icon" 
+                                               data-bs-toggle="tooltip" 
+                                               title="Enviar email cuando una tarea falle."></i>
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-3 mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="email_on_retry" name="email_on_retry">
+                                        <label class="form-check-label" for="email_on_retry">
+                                            Email en Reintento
+                                            <i class="fas fa-info-circle tooltip-icon" 
+                                               data-bs-toggle="tooltip" 
+                                               title="Enviar email cuando una tarea se reintente."></i>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">
+                                        Número de Reintentos
+                                        <i class="fas fa-info-circle tooltip-icon" 
+                                           data-bs-toggle="tooltip" 
+                                           title="Número de veces que se reintentará una tarea si falla."></i>
+                                    </label>
+                                    <input type="number" class="form-control" id="retries" name="retries" 
+                                           value="1" min="0">
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">
+                                        Retraso entre Reintentos (segundos)
+                                        <i class="fas fa-info-circle tooltip-icon" 
+                                           data-bs-toggle="tooltip" 
+                                           title="Tiempo de espera en segundos entre reintentos."></i>
+                                    </label>
+                                    <input type="number" class="form-control" id="retry_delay" name="retry_delay" 
+                                           value="300" min="0">
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Configuración de Tareas -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-tasks"></i>
+                            Tareas del DAG
+                        </h5>
+                        <button type="button" class="btn btn-primary btn-sm" id="addTaskBtn">
+                            <i class="fas fa-plus"></i> Agregar Tarea
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="tasksContainer">
+                            <p class="text-muted">No hay tareas configuradas. Haz clic en "Agregar Tarea" para comenzar.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Botones de Acción -->
+                <div class="text-center mb-4">
+                    <button type="button" class="btn btn-success btn-lg me-3" id="generateConfigBtn">
+                        <i class="fas fa-cog"></i> Generar Configuración
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-lg" id="resetFormBtn">
+                        <i class="fas fa-undo"></i> Limpiar Formulario
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Panel de Vista Previa -->
+            <div class="col-lg-4">
+                <div class="card sticky-top">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-eye"></i>
+                            Vista Previa JSON
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <button type="button" class="btn btn-outline-primary btn-sm me-2" id="copyJsonBtn">
+                                <i class="fas fa-copy"></i> Copiar
+                            </button>
+                            <button type="button" class="btn btn-outline-success btn-sm" id="downloadJsonBtn">
+                                <i class="fas fa-download"></i> Descargar
+                            </button>
+                        </div>
+                        <pre id="jsonPreview" class="json-preview p-3">
+{
+  "message": "Configura el DAG para ver la vista previa"
+}
+                        </pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para Agregar Tarea -->
+    <div class="modal fade" id="taskModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Agregar Nueva Tarea</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="taskForm">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">ID de la Tarea</label>
+                                <input type="text" class="form-control" id="task_id" name="task_id" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Tipo de Tarea</label>
+                                <select class="form-select" id="task_type" name="task_type">
+                                    <option value="BashOperator">Bash Operator</option>
+                                    <option value="PythonOperator">Python Operator</option>
+                                    <option value="EmailOperator">Email Operator</option>
+                                    <option value="HttpSensor">HTTP Sensor</option>
+                                    <option value="SqlOperator">SQL Operator</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div id="taskParameters">
+                            <!-- Los parámetros se cargarán dinámicamente -->
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Dependencias (IDs de tareas separados por coma)</label>
+                            <input type="text" class="form-control" id="dependencies" name="dependencies">
+                            <small class="form-text text-muted">Opcional: Tareas que deben completarse antes de esta</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="saveTaskBtn">Guardar Tarea</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,385 @@
+/* Estilos personalizados para el Generador de DAG Airflow */
+
+:root {
+    --primary-color: #007bff;
+    --success-color: #28a745;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --info-color: #17a2b8;
+    --light-color: #f8f9fa;
+    --dark-color: #343a40;
+    --border-radius: 8px;
+    --box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    --transition: all 0.3s ease;
+}
+
+body {
+    background-color: #f5f7fa;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Mejoras en las tarjetas */
+.card {
+    border: none;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    transition: var(--transition);
+}
+
+.card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: var(--border-radius) var(--border-radius) 0 0 !important;
+    border-bottom: none;
+}
+
+.card-header h5 {
+    margin: 0;
+    font-weight: 600;
+}
+
+.card-header i {
+    margin-right: 8px;
+    opacity: 0.9;
+}
+
+/* Estilos para formularios */
+.form-control, .form-select {
+    border-radius: 6px;
+    border: 1px solid #e1e5e9;
+    transition: var(--transition);
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.form-label {
+    font-weight: 500;
+    color: var(--dark-color);
+    margin-bottom: 6px;
+}
+
+/* Estilos para botones */
+.btn {
+    border-radius: 6px;
+    font-weight: 500;
+    transition: var(--transition);
+    border: none;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.4);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+    box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+}
+
+.btn-success:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.4);
+}
+
+.btn-outline-primary:hover, 
+.btn-outline-success:hover,
+.btn-outline-secondary:hover,
+.btn-outline-danger:hover {
+    transform: translateY(-1px);
+}
+
+/* Estilos para iconos de tooltip */
+.tooltip-icon {
+    color: #6c757d;
+    font-size: 14px;
+    margin-left: 5px;
+    cursor: help;
+    transition: var(--transition);
+}
+
+.tooltip-icon:hover {
+    color: var(--primary-color);
+    transform: scale(1.1);
+}
+
+/* Estilos para tarjetas de tareas */
+.task-card {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: var(--border-radius);
+    margin-bottom: 15px;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+}
+
+.task-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.task-card:hover {
+    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.task-card h6 {
+    color: var(--dark-color);
+    font-weight: 600;
+}
+
+.task-card .btn-sm {
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+/* Estilos para botones de cron rápido */
+.cron-quick-select {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 15px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: var(--border-radius);
+    border: 1px solid #e9ecef;
+}
+
+.cron-button {
+    font-size: 11px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+
+.cron-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Vista previa JSON */
+.json-preview {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 1px solid #dee2e6;
+    border-radius: var(--border-radius);
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    max-height: 500px;
+    overflow-y: auto;
+    position: relative;
+}
+
+.json-preview::-webkit-scrollbar {
+    width: 8px;
+}
+
+.json-preview::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.json-preview::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.json-preview::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Validación de formularios */
+.is-valid {
+    border-color: var(--success-color) !important;
+    background-image: none;
+}
+
+.is-invalid {
+    border-color: var(--danger-color) !important;
+    background-image: none;
+}
+
+.validation-feedback {
+    font-size: 0.875em;
+    margin-top: 0.25rem;
+    font-weight: 500;
+}
+
+.text-success {
+    color: var(--success-color) !important;
+}
+
+.text-danger {
+    color: var(--danger-color) !important;
+}
+
+/* Modal mejoras */
+.modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-bottom: none;
+}
+
+.modal-header .btn-close {
+    filter: invert(1);
+}
+
+.modal-body {
+    padding: 2rem;
+}
+
+.modal-footer {
+    border-top: 1px solid #e9ecef;
+    padding: 1rem 2rem;
+}
+
+/* Checkboxes personalizados */
+.form-check-input:checked {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.form-check-input:focus {
+    border-color: var(--primary-color);
+    outline: 0;
+    box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.25);
+}
+
+/* Alertas personalizadas */
+.alert {
+    border: none;
+    border-radius: var(--border-radius);
+    font-weight: 500;
+    box-shadow: var(--box-shadow);
+}
+
+.alert-success {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    color: #155724;
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    color: #721c24;
+}
+
+.alert-warning {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
+    color: #856404;
+}
+
+.alert-info {
+    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+    color: #0c5460;
+}
+
+/* Sticky sidebar */
+.sticky-top {
+    top: 20px !important;
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card, .task-card {
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* Responsividad mejorada */
+@media (max-width: 768px) {
+    .cron-quick-select {
+        gap: 5px;
+    }
+    
+    .cron-button {
+        font-size: 10px;
+        padding: 4px 8px;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .modal-body {
+        padding: 1rem;
+    }
+    
+    .btn-lg {
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .container-fluid {
+        padding: 1rem;
+    }
+    
+    h1 {
+        font-size: 1.5rem;
+    }
+    
+    .json-preview {
+        font-size: 10px;
+        max-height: 300px;
+    }
+}
+
+/* Mejoras en accesibilidad */
+.btn:focus,
+.form-control:focus,
+.form-select:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* Estados de hover mejorados */
+.card:hover .card-header {
+    background: linear-gradient(135deg, #5a67d8 0%, #667eea 100%);
+}
+
+/* Transiciones suaves para todos los elementos interactivos */
+* {
+    transition: color 0.15s ease-in-out, 
+                background-color 0.15s ease-in-out, 
+                border-color 0.15s ease-in-out, 
+                box-shadow 0.15s ease-in-out,
+                transform 0.15s ease-in-out;
+}
+
+/* Estilos para elementos vacíos */
+.text-muted {
+    font-style: italic;
+    text-align: center;
+    padding: 2rem;
+    border: 2px dashed #dee2e6;
+    border-radius: var(--border-radius);
+    background-color: #f8f9fa;
+}

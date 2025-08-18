@@ -9,6 +9,257 @@ class DAGGenerator {
         this.initializeTooltips();
         this.loadTaskTemplates();
         this.setDefaultDateTime();
+        this.initializeCronInterpreter();
+    }
+    
+    initializeCronInterpreter() {
+        // Crear el contenedor para la interpretación del cron
+        const cronContainer = document.getElementById('schedule_interval').parentNode;
+        
+        // Crear el elemento de interpretación
+        const interpretationDiv = document.createElement('div');
+        interpretationDiv.id = 'cronInterpretation';
+        interpretationDiv.className = 'cron-interpretation mt-2 p-3 bg-light border rounded';
+        interpretationDiv.innerHTML = '<i class="fas fa-info-circle text-muted"></i> <span class="text-muted">Escribe una expresión cron para ver su interpretación</span>';
+        
+        cronContainer.insertBefore(interpretationDiv, document.getElementById('cronValidation'));
+    }
+    
+    interpretCron(cronExpression) {
+        const interpretationDiv = document.getElementById('cronInterpretation');
+        
+        if (!cronExpression.trim()) {
+            interpretationDiv.innerHTML = '<i class="fas fa-info-circle text-muted"></i> <span class="text-muted">Escribe una expresión cron para ver su interpretación</span>';
+            interpretationDiv.className = 'cron-interpretation mt-2 p-3 bg-light border rounded';
+            return;
+        }
+        
+        const parts = cronExpression.trim().split(/\s+/);
+        
+        if (parts.length !== 5) {
+            interpretationDiv.innerHTML = '<i class="fas fa-exclamation-triangle text-warning"></i> <span class="text-warning">Formato incorrecto. Debe tener 5 partes: minuto hora día mes día_semana</span>';
+            interpretationDiv.className = 'cron-interpretation mt-2 p-3 bg-warning bg-opacity-10 border border-warning rounded';
+            return;
+        }
+        
+        const [minute, hour, day, month, dayOfWeek] = parts;
+        
+        try {
+            const interpretation = this.generateCronInterpretation(minute, hour, day, month, dayOfWeek);
+            interpretationDiv.innerHTML = `<i class="fas fa-clock text-primary"></i> <span class="text-dark"><strong>Se ejecutará:</strong> ${interpretation}</span>`;
+            interpretationDiv.className = 'cron-interpretation mt-2 p-3 bg-primary bg-opacity-10 border border-primary rounded';
+        } catch (error) {
+            interpretationDiv.innerHTML = `<i class="fas fa-exclamation-triangle text-danger"></i> <span class="text-danger">Error interpretando expresión: ${error.message}</span>`;
+            interpretationDiv.className = 'cron-interpretation mt-2 p-3 bg-danger bg-opacity-10 border border-danger rounded';
+        }
+    }
+    
+    generateCronInterpretation(minute, hour, day, month, dayOfWeek) {
+        let interpretation = "";
+        
+        // Interpretar frecuencia base
+        const frequency = this.determineCronFrequency(minute, hour, day, month, dayOfWeek);
+        
+        // Generar descripción según la frecuencia
+        switch (frequency.type) {
+            case 'minute':
+                interpretation = this.interpretMinuteSchedule(minute, hour, day, month, dayOfWeek);
+                break;
+            case 'hourly':
+                interpretation = this.interpretHourlySchedule(minute, hour, day, month, dayOfWeek);
+                break;
+            case 'daily':
+                interpretation = this.interpretDailySchedule(minute, hour, day, month, dayOfWeek);
+                break;
+            case 'weekly':
+                interpretation = this.interpretWeeklySchedule(minute, hour, day, month, dayOfWeek);
+                break;
+            case 'monthly':
+                interpretation = this.interpretMonthlySchedule(minute, hour, day, month, dayOfWeek);
+                break;
+            case 'yearly':
+                interpretation = this.interpretYearlySchedule(minute, hour, day, month, dayOfWeek);
+                break;
+            default:
+                interpretation = this.interpretComplexSchedule(minute, hour, day, month, dayOfWeek);
+        }
+        
+        return interpretation;
+    }
+    
+    determineCronFrequency(minute, hour, day, month, dayOfWeek) {
+        // Determinar el tipo de frecuencia basado en los valores
+        if (minute !== '*' && hour === '*' && day === '*' && month === '*' && dayOfWeek === '*') {
+            return { type: 'hourly' };
+        } else if (hour !== '*' && day === '*' && month === '*' && dayOfWeek === '*') {
+            return { type: 'daily' };
+        } else if (dayOfWeek !== '*' && day === '*') {
+            return { type: 'weekly' };
+        } else if (day !== '*' && dayOfWeek === '*' && month === '*') {
+            return { type: 'monthly' };
+        } else if (month !== '*') {
+            return { type: 'yearly' };
+        } else if (minute.includes('/') && hour === '*') {
+            return { type: 'minute' };
+        } else {
+            return { type: 'complex' };
+        }
+    }
+    
+    interpretMinuteSchedule(minute, hour, day, month, dayOfWeek) {
+        if (minute.includes('/')) {
+            const interval = minute.split('/')[1];
+            return `cada ${interval} minutos`;
+        }
+        return `en el minuto ${minute} de cada hora`;
+    }
+    
+    interpretHourlySchedule(minute, hour, day, month, dayOfWeek) {
+        const minuteText = minute === '0' ? 'en punto' : `y ${minute} minutos`;
+        
+        if (hour.includes('/')) {
+            const interval = hour.split('/')[1];
+            return `cada ${interval} horas a las ${minuteText}`;
+        } else if (hour.includes(',')) {
+            const hours = hour.split(',').map(h => this.formatHour(h));
+            return `a las ${hours.join(', ')} ${minuteText}`;
+        } else if (hour.includes('-')) {
+            const [start, end] = hour.split('-');
+            return `cada hora desde las ${this.formatHour(start)} hasta las ${this.formatHour(end)} ${minuteText}`;
+        } else {
+            return `todos los días a las ${this.formatHour(hour)}:${minute.padStart(2, '0')}`;
+        }
+    }
+    
+    interpretDailySchedule(minute, hour, day, month, dayOfWeek) {
+        const timeText = `a las ${this.formatHour(hour)}:${minute.padStart(2, '0')}`;
+        return `todos los días ${timeText}`;
+    }
+    
+    interpretWeeklySchedule(minute, hour, day, month, dayOfWeek) {
+        const timeText = `a las ${this.formatHour(hour)}:${minute.padStart(2, '0')}`;
+        const daysText = this.interpretDayOfWeek(dayOfWeek);
+        return `${daysText} ${timeText}`;
+    }
+    
+    interpretMonthlySchedule(minute, hour, day, month, dayOfWeek) {
+        const timeText = `a las ${this.formatHour(hour)}:${minute.padStart(2, '0')}`;
+        
+        if (day.includes('/')) {
+            const interval = day.split('/')[1];
+            return `cada ${interval} días ${timeText}`;
+        } else if (day.includes(',')) {
+            const days = day.split(',').join(', ');
+            return `los días ${days} de cada mes ${timeText}`;
+        } else if (day.includes('-')) {
+            const [start, end] = day.split('-');
+            return `del día ${start} al ${end} de cada mes ${timeText}`;
+        } else {
+            return `el día ${day} de cada mes ${timeText}`;
+        }
+    }
+    
+    interpretYearlySchedule(minute, hour, day, month, dayOfWeek) {
+        const timeText = `a las ${this.formatHour(hour)}:${minute.padStart(2, '0')}`;
+        const monthText = this.interpretMonth(month);
+        const dayText = day === '*' ? '' : ` el día ${day}`;
+        
+        return `${monthText}${dayText} ${timeText}`;
+    }
+    
+    interpretComplexSchedule(minute, hour, day, month, dayOfWeek) {
+        let parts = [];
+        
+        // Minutos
+        if (minute !== '*') {
+            if (minute.includes('/')) {
+                parts.push(`cada ${minute.split('/')[1]} minutos`);
+            } else if (minute.includes(',')) {
+                parts.push(`en los minutos ${minute}`);
+            } else {
+                parts.push(`en el minuto ${minute}`);
+            }
+        }
+        
+        // Horas
+        if (hour !== '*') {
+            if (hour.includes('/')) {
+                parts.push(`cada ${hour.split('/')[1]} horas`);
+            } else if (hour.includes(',')) {
+                const hours = hour.split(',').map(h => this.formatHour(h));
+                parts.push(`a las ${hours.join(', ')}`);
+            } else {
+                parts.push(`a las ${this.formatHour(hour)}`);
+            }
+        }
+        
+        // Días del mes
+        if (day !== '*') {
+            if (day.includes('/')) {
+                parts.push(`cada ${day.split('/')[1]} días`);
+            } else if (day.includes(',')) {
+                parts.push(`los días ${day} del mes`);
+            } else {
+                parts.push(`el día ${day} del mes`);
+            }
+        }
+        
+        // Meses
+        if (month !== '*') {
+            parts.push(this.interpretMonth(month));
+        }
+        
+        // Días de la semana
+        if (dayOfWeek !== '*') {
+            parts.push(this.interpretDayOfWeek(dayOfWeek));
+        }
+        
+        return parts.join(', ');
+    }
+    
+    formatHour(hour) {
+        const h = parseInt(hour);
+        if (h === 0) return '12:00 AM (medianoche)';
+        if (h === 12) return '12:00 PM (mediodía)';
+        if (h < 12) return `${h}:00 AM`;
+        return `${h - 12}:00 PM`;
+    }
+    
+    interpretDayOfWeek(dayOfWeek) {
+        const days = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+        
+        if (dayOfWeek.includes(',')) {
+            const selectedDays = dayOfWeek.split(',').map(d => days[parseInt(d)]);
+            return `los ${selectedDays.join(', ')}`;
+        } else if (dayOfWeek.includes('-')) {
+            const [start, end] = dayOfWeek.split('-').map(d => parseInt(d));
+            return `desde el ${days[start]} hasta el ${days[end]}`;
+        } else if (dayOfWeek.includes('/')) {
+            const interval = dayOfWeek.split('/')[1];
+            return `cada ${interval} días de la semana`;
+        } else {
+            return `los ${days[parseInt(dayOfWeek)]}`;
+        }
+    }
+    
+    interpretMonth(month) {
+        const months = [
+            'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+            'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+        ];
+        
+        if (month.includes(',')) {
+            const selectedMonths = month.split(',').map(m => months[parseInt(m) - 1]);
+            return `en ${selectedMonths.join(', ')}`;
+        } else if (month.includes('-')) {
+            const [start, end] = month.split('-').map(m => parseInt(m));
+            return `desde ${months[start - 1]} hasta ${months[end - 1]}`;
+        } else if (month.includes('/')) {
+            const interval = month.split('/')[1];
+            return `cada ${interval} meses`;
+        } else {
+            return `en ${months[parseInt(month) - 1]}`;
+        }
     }
     
     initializeEventListeners() {
@@ -23,7 +274,10 @@ class DAGGenerator {
         document.getElementById('downloadJsonBtn').addEventListener('click', () => this.downloadJson());
         
         // Validación de cron en tiempo real
-        document.getElementById('schedule_interval').addEventListener('input', (e) => this.validateCron(e.target.value));
+        document.getElementById('schedule_interval').addEventListener('input', (e) => {
+            this.validateCron(e.target.value);
+            this.interpretCron(e.target.value);
+        });
         
         // Botones de cron rápido
         document.querySelectorAll('.cron-button').forEach(btn => {
@@ -31,6 +285,7 @@ class DAGGenerator {
                 const cronExpression = e.target.dataset.cron;
                 document.getElementById('schedule_interval').value = cronExpression;
                 this.validateCron(cronExpression);
+                this.interpretCron(cronExpression);
             });
         });
         

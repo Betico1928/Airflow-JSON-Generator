@@ -13,33 +13,87 @@ class CronHelper:
         """Valida una expresión cron básica"""
         parts = cron_expression.split()
         if len(parts) != 5:
-            return False
+            return False, "Debe tener exactamente 5 partes separadas por espacios"
         
-        # Validación básica de formato
-        patterns = [
-            r'^(\*|[0-5]?[0-9]|[0-5]?[0-9]-[0-5]?[0-9]|[0-5]?[0-9]/\d+)$',  # minute
-            r'^(\*|[01]?[0-9]|2[0-3]|[01]?[0-9]-2[0-3]|[01]?[0-9]/\d+)$',     # hour
-            r'^(\*|[12]?[0-9]|3[01]|[12]?[0-9]-3[01]|[12]?[0-9]/\d+)$',       # day
-            r'^(\*|[1-9]|1[0-2]|[1-9]-1[0-2]|[1-9]/\d+)$',                   # month
-            r'^(\*|[0-6]|[0-6]-[0-6]|[0-6]/\d+)$'                            # day of week
+        # Definir rangos válidos para cada campo
+        field_ranges = [
+            (0, 59, "minuto"),    # minute
+            (0, 23, "hora"),      # hour
+            (1, 31, "día"),       # day
+            (1, 12, "mes"),       # month
+            (0, 6, "día_semana")  # day of week
         ]
         
-        for i, part in enumerate(parts):
-            if not re.match(patterns[i], part):
+        for i, (part, (min_val, max_val, field_name)) in enumerate(zip(parts, field_ranges)):
+            if not CronHelper._validate_cron_field(part, min_val, max_val):
+                return False, f"Valor inválido en campo {field_name}: {part}"
+        
+        return True, "Expresión cron válida"
+    
+    @staticmethod
+    def _validate_cron_field(field, min_val, max_val):
+        """Valida un campo individual de cron"""
+        if field == '*':
+            return True
+        
+        # Manejar listas (valores separados por coma)
+        if ',' in field:
+            values = field.split(',')
+            return all(CronHelper._validate_cron_field(v.strip(), min_val, max_val) for v in values)
+        
+        # Manejar rangos (valores separados por guión)
+        if '-' in field:
+            try:
+                start, end = field.split('-')
+                start_val, end_val = int(start), int(end)
+                return (min_val <= start_val <= max_val and 
+                       min_val <= end_val <= max_val and 
+                       start_val <= end_val)
+            except ValueError:
                 return False
-        return True
+        
+        # Manejar pasos (valores con /)
+        if '/' in field:
+            try:
+                range_part, step_part = field.split('/')
+                step = int(step_part)
+                if step <= 0:
+                    return False
+                
+                if range_part == '*':
+                    return True
+                else:
+                    return CronHelper._validate_cron_field(range_part, min_val, max_val)
+            except ValueError:
+                return False
+        
+        # Validar valor único
+        try:
+            value = int(field)
+            return min_val <= value <= max_val
+        except ValueError:
+            return False
     
     @staticmethod
     def quick_cron_options():
         """Opciones rápidas de cron comunes"""
         return {
+            'every_minute': ('* * * * *', 'Cada minuto'),
+            'every_5min': ('*/5 * * * *', 'Cada 5 minutos'),
+            'every_15min': ('*/15 * * * *', 'Cada 15 minutos'),
+            'every_30min': ('*/30 * * * *', 'Cada 30 minutos'),
+            'hourly': ('0 * * * *', 'Cada hora en punto'),
             'daily_midnight': ('0 0 * * *', 'Diario a medianoche'),
             'daily_6am': ('0 6 * * *', 'Diario a las 6:00 AM'),
             'daily_9am': ('0 9 * * *', 'Diario a las 9:00 AM'),
-            'hourly': ('0 * * * *', 'Cada hora'),
-            'every_30min': ('*/30 * * * *', 'Cada 30 minutos'),
-            'weekly_monday': ('0 9 * * 1', 'Lunes a las 9:00 AM'),
-            'monthly_1st': ('0 9 1 * *', 'Primer día del mes a las 9:00 AM'),
+            'daily_noon': ('0 12 * * *', 'Diario a mediodía'),
+            'daily_6pm': ('0 18 * * *', 'Diario a las 6:00 PM'),
+            'weekly_monday_9am': ('0 9 * * 1', 'Lunes a las 9:00 AM'),
+            'weekly_friday_5pm': ('0 17 * * 5', 'Viernes a las 5:00 PM'),
+            'monthly_1st_9am': ('0 9 1 * *', 'Primer día del mes a las 9:00 AM'),
+            'monthly_last_day': ('0 9 L * *', 'Último día del mes a las 9:00 AM'),
+            'quarterly': ('0 9 1 */3 *', 'Trimestralmente (1 enero, abril, julio, octubre)'),
+            'yearly_jan_1st': ('0 9 1 1 *', 'Anualmente el 1 de enero a las 9:00 AM'),
         }
 
 class DAGConfigGenerator:
@@ -128,11 +182,11 @@ def validate_cron():
     data = request.get_json()
     cron_expression = data.get('cron', '')
     
-    is_valid = CronHelper.validate_cron(cron_expression)
+    is_valid, message = CronHelper.validate_cron(cron_expression)
     
     return jsonify({
         'valid': is_valid,
-        'message': 'Expresión cron válida' if is_valid else 'Expresión cron inválida'
+        'message': message
     })
 
 @app.route('/generate_config', methods=['POST'])

@@ -1,15 +1,343 @@
 class DAGGenerator {
     constructor() {
-        this.tasks = [];
+        this.jsonObjects = {};  // Cambio de tasks a jsonObjects
+        this.currentEditingObject = null;
+        this.currentObjectData = {};
         this.taskTemplates = {};
         this.taskCounter = 0;
         this.currentConfig = {};
         
         this.initializeEventListeners();
         this.initializeTooltips();
-        this.loadTaskTemplates();
         this.setDefaultDateTime();
         this.initializeCronInterpreter();
+    }
+    
+    // === MÉTODOS PARA EDITOR JSON DINÁMICO ===
+    
+    showObjectModal(objectName = null) {
+        this.currentEditingObject = objectName;
+        
+        if (objectName && this.jsonObjects[objectName]) {
+            // Editando objeto existente
+            document.getElementById('jsonModalTitle').textContent = `Editar Objeto: ${objectName}`;
+            document.getElementById('objectName').value = objectName;
+            document.getElementById('objectName').disabled = true;
+            this.currentObjectData = JSON.parse(JSON.stringify(this.jsonObjects[objectName]));
+        } else {
+            // Creando objeto nuevo
+            document.getElementById('jsonModalTitle').textContent = 'Crear Nuevo Objeto';
+            document.getElementById('objectName').value = '';
+            document.getElementById('objectName').disabled = false;
+            this.currentObjectData = {};
+        }
+        
+        this.renderPropertiesList();
+        this.updateObjectPreview();
+        this.resetPropertyForm();
+        
+        const modal = new bootstrap.Modal(document.getElementById('jsonObjectModal'));
+        modal.show();
+    }
+    
+    updatePropertyInput(type) {
+        const container = document.getElementById('propertyValueContainer');
+        let inputHtml = '';
+        
+        switch (type) {
+            case 'string':
+                inputHtml = '<input type="text" class="form-control" id="propertyValue" placeholder="valor de texto">';
+                break;
+            case 'number':
+                inputHtml = '<input type="number" class="form-control" id="propertyValue" placeholder="123">';
+                break;
+            case 'boolean':
+                inputHtml = `
+                    <select class="form-select" id="propertyValue">
+                        <option value="true">true</option>
+                        <option value="false">false</option>
+                    </select>
+                `;
+                break;
+            case 'array':
+                inputHtml = '<input type="text" class="form-control" id="propertyValue" placeholder="elemento1, elemento2, elemento3">';
+                break;
+            case 'object':
+                inputHtml = `
+                    <textarea class="form-control" id="propertyValue" rows="3" 
+                              placeholder='{"clave": "valor"}'></textarea>
+                `;
+                break;
+            case 'null':
+                inputHtml = '<input type="text" class="form-control" id="propertyValue" value="null" readonly>';
+                break;
+        }
+        
+        container.innerHTML = inputHtml;
+    }
+    
+    addProperty() {
+        const key = document.getElementById('propertyKey').value.trim();
+        const type = document.getElementById('propertyType').value;
+        const valueInput = document.getElementById('propertyValue');
+        
+        if (!key) {
+            this.showAlert('La clave de la propiedad no puede estar vacía', 'warning');
+            return;
+        }
+        
+        let value;
+        try {
+            switch (type) {
+                case 'string':
+                    value = valueInput.value;
+                    break;
+                case 'number':
+                    value = parseFloat(valueInput.value) || 0;
+                    break;
+                case 'boolean':
+                    value = valueInput.value === 'true';
+                    break;
+                case 'array':
+                    value = valueInput.value.split(',').map(item => item.trim()).filter(item => item);
+                    break;
+                case 'object':
+                    value = valueInput.value.trim() ? JSON.parse(valueInput.value) : {};
+                    break;
+                case 'null':
+                    value = null;
+                    break;
+                default:
+                    value = valueInput.value;
+            }
+        } catch (error) {
+            this.showAlert('Error parseando el valor: ' + error.message, 'danger');
+            return;
+        }
+        
+        this.currentObjectData[key] = value;
+        this.renderPropertiesList();
+        this.updateObjectPreview();
+        this.resetPropertyForm();
+        
+        this.showAlert(`Propiedad "${key}" agregada`, 'success');
+    }
+    
+    removeProperty(key) {
+        if (confirm(`¿Eliminar la propiedad "${key}"?`)) {
+            delete this.currentObjectData[key];
+            this.renderPropertiesList();
+            this.updateObjectPreview();
+            this.showAlert(`Propiedad "${key}" eliminada`, 'info');
+        }
+    }
+    
+    editProperty(key, value) {
+        this.currentEditingProperty = key;
+        document.getElementById('complexPropertyJson').value = JSON.stringify(value, null, 2);
+        
+        const modal = new bootstrap.Modal(document.getElementById('complexPropertyModal'));
+        modal.show();
+    }
+    
+    saveComplexProperty() {
+        try {
+            const jsonText = document.getElementById('complexPropertyJson').value;
+            const value = JSON.parse(jsonText);
+            
+            this.currentObjectData[this.currentEditingProperty] = value;
+            this.renderPropertiesList();
+            this.updateObjectPreview();
+            
+            const modal = bootstrap.Modal.getInstance(document.getElementById('complexPropertyModal'));
+            modal.hide();
+            
+            this.showAlert('Propiedad actualizada', 'success');
+        } catch (error) {
+            this.showAlert('JSON inválido: ' + error.message, 'danger');
+        }
+    }
+    
+    renderPropertiesList() {
+        const container = document.getElementById('propertiesList');
+        
+        if (Object.keys(this.currentObjectData).length === 0) {
+            container.innerHTML = `
+                <div class="text-muted text-center py-3">
+                    <i class="fas fa-list"></i>
+                    <br>No hay propiedades
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '';
+        Object.entries(this.currentObjectData).forEach(([key, value]) => {
+            const valueType = Array.isArray(value) ? 'array' : typeof value;
+            const valuePreview = this.getValuePreview(value);
+            
+            html += `
+                <div class="property-item p-2 mb-2 border rounded">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <strong>${key}</strong> 
+                            <span class="badge bg-secondary ms-1">${valueType}</span>
+                            <div class="small text-muted mt-1">${valuePreview}</div>
+                        </div>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary btn-sm" onclick="dagGenerator.editProperty('${key}', ${JSON.stringify(value).replace(/"/g, '&quot;')})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="dagGenerator.removeProperty('${key}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+    
+    getValuePreview(value) {
+        if (value === null) return 'null';
+        if (typeof value === 'string') return `"${value.length > 30 ? value.substring(0, 30) + '...' : value}"`;
+        if (typeof value === 'number' || typeof value === 'boolean') return value.toString();
+        if (Array.isArray(value)) return `[${value.length} elementos]`;
+        if (typeof value === 'object') return `{${Object.keys(value).length} propiedades}`;
+        return JSON.stringify(value);
+    }
+    
+    updateObjectPreview() {
+        const objectName = document.getElementById('objectName').value.trim() || 'objeto_ejemplo';
+        const preview = { [objectName]: this.currentObjectData };
+        
+        document.getElementById('objectPreview').textContent = JSON.stringify(preview, null, 2);
+    }
+    
+    resetPropertyForm() {
+        document.getElementById('propertyKey').value = '';
+        document.getElementById('propertyType').value = 'string';
+        this.updatePropertyInput('string');
+    }
+    
+    toggleImportJson() {
+        const textarea = document.getElementById('importJsonTextarea');
+        const button = document.getElementById('processImportBtn');
+        
+        if (textarea.style.display === 'none') {
+            textarea.style.display = 'block';
+            button.style.display = 'block';
+            document.getElementById('importJsonBtn').innerHTML = '<i class="fas fa-times"></i> Cancelar';
+        } else {
+            textarea.style.display = 'none';
+            button.style.display = 'none';
+            textarea.value = '';
+            document.getElementById('importJsonBtn').innerHTML = '<i class="fas fa-file-import"></i> Importar JSON';
+        }
+    }
+    
+    processImportedJson() {
+        try {
+            const jsonText = document.getElementById('importJsonTextarea').value.trim();
+            const imported = JSON.parse(jsonText);
+            
+            // Merge con los datos existentes
+            this.currentObjectData = { ...this.currentObjectData, ...imported };
+            
+            this.renderPropertiesList();
+            this.updateObjectPreview();
+            this.toggleImportJson();
+            
+            this.showAlert('JSON importado exitosamente', 'success');
+        } catch (error) {
+            this.showAlert('Error importando JSON: ' + error.message, 'danger');
+        }
+    }
+    
+    saveJsonObject() {
+        const objectName = document.getElementById('objectName').value.trim();
+        
+        if (!objectName) {
+            this.showAlert('El nombre del objeto no puede estar vacío', 'warning');
+            return;
+        }
+        
+        // Validar que el nombre sea válido para JSON
+        if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(objectName)) {
+            this.showAlert('El nombre del objeto debe ser un identificador válido (solo letras, números y _)', 'warning');
+            return;
+        }
+        
+        this.jsonObjects[objectName] = JSON.parse(JSON.stringify(this.currentObjectData));
+        
+        this.renderJsonObjects();
+        this.updatePreview();
+        
+        const modal = bootstrap.Modal.getInstance(document.getElementById('jsonObjectModal'));
+        modal.hide();
+        
+        const action = this.currentEditingObject ? 'actualizado' : 'creado';
+        this.showAlert(`Objeto "${objectName}" ${action} exitosamente`, 'success');
+        
+        this.currentEditingObject = null;
+        this.currentObjectData = {};
+    }
+    
+    renderJsonObjects() {
+        const container = document.getElementById('jsonObjectsContainer');
+        const emptyMessage = document.getElementById('emptyJsonMessage');
+        
+        if (Object.keys(this.jsonObjects).length === 0) {
+            emptyMessage.style.display = 'block';
+            return;
+        }
+        
+        emptyMessage.style.display = 'none';
+        
+        let html = '';
+        Object.entries(this.jsonObjects).forEach(([objectName, objectData]) => {
+            const propertiesCount = Object.keys(objectData).length;
+            const preview = JSON.stringify(objectData, null, 2);
+            
+            html += `
+                <div class="json-object-card p-3 mb-3">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="mb-0">
+                            <i class="fas fa-cube text-primary"></i>
+                            ${objectName}
+                        </h6>
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="dagGenerator.showObjectModal('${objectName}')">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="dagGenerator.removeJsonObject('${objectName}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <p class="mb-2 text-muted">
+                        <strong>Propiedades:</strong> ${propertiesCount}
+                    </p>
+                    <details class="mt-2">
+                        <summary class="text-primary" style="cursor: pointer;">Ver JSON</summary>
+                        <pre class="json-preview p-2 mt-2" style="max-height: 200px;">${preview}</pre>
+                    </details>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+    
+    removeJsonObject(objectName) {
+        if (confirm(`¿Estás seguro de que quieres eliminar el objeto "${objectName}"?`)) {
+            delete this.jsonObjects[objectName];
+            this.renderJsonObjects();
+            this.updatePreview();
+            this.showAlert(`Objeto "${objectName}" eliminado`, 'info');
+        }
     }
     
     initializeCronInterpreter() {
@@ -266,8 +594,18 @@ class DAGGenerator {
         // Botones principales
         document.getElementById('generateConfigBtn').addEventListener('click', () => this.generateConfiguration());
         document.getElementById('resetFormBtn').addEventListener('click', () => this.resetForm());
-        document.getElementById('addTaskBtn').addEventListener('click', () => this.showTaskModal());
-        document.getElementById('saveTaskBtn').addEventListener('click', () => this.saveTask());
+        document.getElementById('addObjectBtn').addEventListener('click', () => this.showObjectModal());
+        document.getElementById('saveObjectBtn').addEventListener('click', () => this.saveJsonObject());
+        
+        // JSON Object Modal eventos
+        document.getElementById('addPropertyBtn').addEventListener('click', () => this.addProperty());
+        document.getElementById('propertyType').addEventListener('change', (e) => this.updatePropertyInput(e.target.value));
+        document.getElementById('importJsonBtn').addEventListener('click', () => this.toggleImportJson());
+        document.getElementById('processImportBtn').addEventListener('click', () => this.processImportedJson());
+        document.getElementById('saveComplexPropertyBtn').addEventListener('click', () => this.saveComplexProperty());
+        
+        // Auto-actualizar vista previa del objeto
+        document.getElementById('objectName').addEventListener('input', () => this.updateObjectPreview());
         
         // Botones de vista previa
         document.getElementById('copyJsonBtn').addEventListener('click', () => this.copyJson());
@@ -289,8 +627,8 @@ class DAGGenerator {
             });
         });
         
-        // Cambio de tipo de tarea en el modal
-        document.getElementById('task_type').addEventListener('change', (e) => this.loadTaskParameters(e.target.value));
+        // Cambio de tipo de tarea en el modal - NO NECESARIO
+        // document.getElementById('task_type').addEventListener('change', (e) => this.loadTaskParameters(e.target.value));
         
         // Auto-generar vista previa cuando cambian los campos
         this.setupAutoPreview();
@@ -620,10 +958,10 @@ class DAGGenerator {
             }
         }
         
-        // Preparar datos para enviar
+        // Preparar datos para enviar (incluyendo objetos JSON personalizados)
         const payload = {
             dag_config: dagConfig,
-            tasks: this.tasks
+            custom_objects: this.jsonObjects  // Cambio de tasks a custom_objects
         };
         
         try {
@@ -665,12 +1003,7 @@ class DAGGenerator {
             catchup: document.getElementById('catchup').checked,
             max_active_runs: parseInt(formData.get('max_active_runs')) || 1,
             tags: formData.get('tags') ? formData.get('tags').split(',').map(t => t.trim()).filter(t => t) : [],
-            tasks_count: this.tasks.length,
-            tasks: this.tasks.map(task => ({
-                task_id: task.task_id,
-                task_type: task.task_type,
-                dependencies: task.dependencies
-            }))
+            ...this.jsonObjects  // Agregar todos los objetos JSON personalizados
         };
         
         this.updateJsonPreview(JSON.stringify(preview, null, 2));
@@ -745,9 +1078,9 @@ class DAGGenerator {
             // Limpiar formulario principal
             document.getElementById('dagConfigForm').reset();
             
-            // Limpiar tareas
-            this.tasks = [];
-            this.renderTasks();
+            // Limpiar objetos JSON
+            this.jsonObjects = {};
+            this.renderJsonObjects();
             
             // Restaurar valores por defecto
             this.setDefaultDateTime();

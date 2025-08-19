@@ -6,6 +6,7 @@
     <title>Generador de DAG Airflow</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
     <style>
         .tooltip-icon {
             color: #6c757d;
@@ -269,20 +270,28 @@
                     </div>
                 </div>
                 
-                <!-- Configuración de Tareas -->
+                <!-- Editor JSON Dinámico -->
                 <div class="card mb-4">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">
-                            <i class="fas fa-tasks"></i>
-                            Tareas del DAG
+                            <i class="fas fa-code"></i>
+                            Configuración Adicional (JSON)
                         </h5>
-                        <button type="button" class="btn btn-primary btn-sm" id="addTaskBtn">
-                            <i class="fas fa-plus"></i> Agregar Tarea
+                        <button type="button" class="btn btn-primary btn-sm" id="addObjectBtn">
+                            <i class="fas fa-plus"></i> Agregar Objeto
                         </button>
                     </div>
                     <div class="card-body">
-                        <div id="tasksContainer">
-                            <p class="text-muted">No hay tareas configuradas. Haz clic en "Agregar Tarea" para comenzar.</p>
+                        <p class="text-muted mb-3">
+                            <i class="fas fa-info-circle"></i>
+                            Crea objetos personalizados como "configuracion", "rutas", "usuarios", etc. 
+                            Cada objeto puede contener propiedades anidadas de cualquier tipo.
+                        </p>
+                        <div id="jsonObjectsContainer">
+                            <div class="text-center text-muted py-4" id="emptyJsonMessage">
+                                <i class="fas fa-cube fa-3x mb-3"></i>
+                                <p>No hay objetos configurados. Haz clic en "Agregar Objeto" para comenzar.</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -327,47 +336,109 @@
         </div>
     </div>
     
-    <!-- Modal para Agregar Tarea -->
-    <div class="modal fade" id="taskModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
+    <!-- Modal para Agregar/Editar Objeto JSON -->
+    <div class="modal fade" id="jsonObjectModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Agregar Nueva Tarea</h5>
+                    <h5 class="modal-title" id="jsonModalTitle">Crear Nuevo Objeto</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="taskForm">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">ID de la Tarea</label>
-                                <input type="text" class="form-control" id="task_id" name="task_id" required>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    Nombre del Objeto
+                                    <i class="fas fa-info-circle tooltip-icon" 
+                                       data-bs-toggle="tooltip" 
+                                       title="Nombre que tendrá este objeto en el JSON final (ej: configuracion, rutas, usuarios)"></i>
+                                </label>
+                                <input type="text" class="form-control" id="objectName" placeholder="configuracion">
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Tipo de Tarea</label>
-                                <select class="form-select" id="task_type" name="task_type">
-                                    <option value="BashOperator">Bash Operator</option>
-                                    <option value="PythonOperator">Python Operator</option>
-                                    <option value="EmailOperator">Email Operator</option>
-                                    <option value="HttpSensor">HTTP Sensor</option>
-                                    <option value="SqlOperator">SQL Operator</option>
-                                </select>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Agregar Propiedad</label>
+                                <div class="input-group mb-2">
+                                    <input type="text" class="form-control" id="propertyKey" placeholder="clave">
+                                    <select class="form-select" id="propertyType" style="max-width: 120px;">
+                                        <option value="string">Texto</option>
+                                        <option value="number">Número</option>
+                                        <option value="boolean">Booleano</option>
+                                        <option value="array">Array</option>
+                                        <option value="object">Objeto</option>
+                                        <option value="null">Null</option>
+                                    </select>
+                                </div>
+                                <div id="propertyValueContainer">
+                                    <input type="text" class="form-control" id="propertyValue" placeholder="valor">
+                                </div>
+                                <button type="button" class="btn btn-outline-primary btn-sm mt-2 w-100" id="addPropertyBtn">
+                                    <i class="fas fa-plus"></i> Agregar Propiedad
+                                </button>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <button type="button" class="btn btn-outline-secondary btn-sm w-100" id="importJsonBtn">
+                                    <i class="fas fa-file-import"></i> Importar JSON
+                                </button>
+                                <textarea class="form-control mt-2" id="importJsonTextarea" rows="4" 
+                                         placeholder='{"ejemplo": "valor"}' style="display: none;"></textarea>
+                                <button type="button" class="btn btn-primary btn-sm mt-2 w-100" id="processImportBtn" style="display: none;">
+                                    Procesar JSON
+                                </button>
                             </div>
                         </div>
                         
-                        <div id="taskParameters">
-                            <!-- Los parámetros se cargarán dinámicamente -->
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Propiedades del Objeto</label>
+                                <div id="propertiesList" class="properties-container">
+                                    <div class="text-muted text-center py-3">
+                                        <i class="fas fa-list"></i>
+                                        <br>No hay propiedades
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         
-                        <div class="mb-3">
-                            <label class="form-label">Dependencias (IDs de tareas separados por coma)</label>
-                            <input type="text" class="form-control" id="dependencies" name="dependencies">
-                            <small class="form-text text-muted">Opcional: Tareas que deben completarse antes de esta</small>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Vista Previa JSON</label>
+                                <pre id="objectPreview" class="json-preview p-3" style="height: 400px;">
+{
+  "objeto_ejemplo": {}
+}
+                                </pre>
+                            </div>
                         </div>
-                    </form>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" id="saveTaskBtn">Guardar Tarea</button>
+                    <button type="button" class="btn btn-primary" id="saveObjectBtn">Guardar Objeto</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para Editar Propiedad Compleja -->
+    <div class="modal fade" id="complexPropertyModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar Propiedad</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">JSON de la Propiedad</label>
+                        <textarea class="form-control" id="complexPropertyJson" rows="10"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="saveComplexPropertyBtn">Guardar</button>
                 </div>
             </div>
         </div>

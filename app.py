@@ -116,8 +116,7 @@ class DAGConfigGenerator:
                 'email_on_retry': False,
                 'retries': 1,
                 'retry_delay': 300  # en segundos
-            },
-            'tasks': []
+            }
         }
     
     def set_basic_config(self, config_data):
@@ -141,15 +140,10 @@ class DAGConfigGenerator:
                 else:
                     self.config[key] = value
     
-    def add_task(self, task_config):
-        """Añade una tarea al DAG"""
-        task = {
-            'task_id': task_config.get('task_id', ''),
-            'task_type': task_config.get('task_type', 'BashOperator'),
-            'parameters': task_config.get('parameters', {}),
-            'dependencies': task_config.get('dependencies', [])
-        }
-        self.config['tasks'].append(task)
+    def add_custom_objects(self, custom_objects):
+        """Añade objetos JSON personalizados al config"""
+        if custom_objects:
+            self.config.update(custom_objects)
     
     def generate_json(self):
         """Genera el JSON final"""
@@ -165,8 +159,10 @@ class DAGConfigGenerator:
         if not self.config['start_date']:
             errors.append("Fecha de inicio es requerida")
         
-        if self.config['schedule_interval'] and not CronHelper.validate_cron(self.config['schedule_interval']):
-            errors.append("Expresión cron inválida")
+        if self.config['schedule_interval']:
+            is_valid, message = CronHelper.validate_cron(self.config['schedule_interval'])
+            if not is_valid:
+                errors.append(f"Expresión cron inválida: {message}")
         
         return errors
 
@@ -198,9 +194,9 @@ def generate_config():
         generator = DAGConfigGenerator()
         generator.set_basic_config(data.get('dag_config', {}))
         
-        # Agregar tareas si las hay
-        for task in data.get('tasks', []):
-            generator.add_task(task)
+        # Agregar objetos JSON personalizados
+        custom_objects = data.get('custom_objects', {})
+        generator.add_custom_objects(custom_objects)
         
         # Validar configuración
         errors = generator.validate_config()
@@ -224,40 +220,6 @@ def generate_config():
             'success': False,
             'errors': [f'Error interno: {str(e)}']
         })
-
-@app.route('/task_templates')
-def task_templates():
-    """Devuelve plantillas de tareas comunes"""
-    templates = {
-        'BashOperator': {
-            'bash_command': '',
-            'env': {},
-            'cwd': None
-        },
-        'PythonOperator': {
-            'python_callable': '',
-            'op_args': [],
-            'op_kwargs': {}
-        },
-        'EmailOperator': {
-            'to': '',
-            'subject': '',
-            'html_content': '',
-            'files': []
-        },
-        'HttpSensor': {
-            'endpoint': '',
-            'request_params': {},
-            'timeout': 20,
-            'poke_interval': 60
-        },
-        'SqlOperator': {
-            'sql': '',
-            'conn_id': 'default_db'
-        }
-    }
-    
-    return jsonify(templates)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

@@ -67,6 +67,28 @@
         .is-invalid {
             border-color: #dc3545;
         }
+
+        .config-section {
+            border-left: 4px solid #007bff;
+            padding-left: 15px;
+            margin-bottom: 25px;
+        }
+
+        .config-section h6 {
+            color: #007bff;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .form-text {
+            font-size: 0.875em;
+            color: #6c757d;
+        }
+
+        .accordion-button:not(.collapsed) {
+            background-color: #e7f1ff;
+            color: #0c63e4;
+        }
     </style>
 </head>
 <body>
@@ -93,177 +115,580 @@
                     </div>
                     <div class="card-body">
                         <form id="dagConfigForm">
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">
-                                        DAG ID
-                                        <i class="fas fa-info-circle tooltip-icon" 
-                                           data-bs-toggle="tooltip" 
-                                           title="Identificador único del DAG. Debe ser único en toda la instalación de Airflow."></i>
-                                    </label>
-                                    <input type="text" class="form-control" id="dag_id" name="dag_id" required>
+                            <!-- Información Básica -->
+                            <div class="config-section">
+                                <h6><i class="fas fa-info-circle"></i> Información Básica</h6>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">
+                                            DAG ID
+                                            <i class="fas fa-info-circle tooltip-icon" 
+                                               data-bs-toggle="tooltip" 
+                                               title="Identificador único del DAG. Debe ser único en toda la instalación de Airflow."></i>
+                                        </label>
+                                        <input type="text" class="form-control" id="dag_id" name="dag_id" required>
+                                    </div>
+                                    
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">
+                                            Propietario
+                                            <i class="fas fa-info-circle tooltip-icon" 
+                                               data-bs-toggle="tooltip" 
+                                               title="Usuario responsable del DAG."></i>
+                                        </label>
+                                        <input type="text" class="form-control" id="owner" name="owner" value="airflow">
+                                    </div>
                                 </div>
                                 
-                                <div class="col-md-6 mb-3">
+                                <div class="mb-3">
                                     <label class="form-label">
                                         Descripción
                                         <i class="fas fa-info-circle tooltip-icon" 
                                            data-bs-toggle="tooltip" 
                                            title="Descripción breve del propósito del DAG."></i>
                                     </label>
-                                    <input type="text" class="form-control" id="description" name="description">
+                                    <textarea class="form-control" id="description" name="description" rows="2"></textarea>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        Documentación (Markdown)
+                                        <i class="fas fa-info-circle tooltip-icon" 
+                                           data-bs-toggle="tooltip" 
+                                           title="Documentación en formato Markdown que aparecerá en la interfaz de Airflow."></i>
+                                    </label>
+                                    <textarea class="form-control" id="doc_md" name="doc_md" rows="3" placeholder="# Mi DAG&#10;&#10;Este DAG realiza..."></textarea>
                                 </div>
                             </div>
-                            
-                            <div class="mb-3">
-                                <label class="form-label">
-                                    Programación (Cron)
-                                    <i class="fas fa-info-circle tooltip-icon" 
-                                       data-bs-toggle="tooltip" 
-                                       title="Expresión cron que define cuándo se ejecutará el DAG. Formato: minuto hora día mes día_semana"></i>
-                                </label>
-                                
-                                <div class="cron-quick-select">
-                                    {% for key, (cron, desc) in cron_options.items() %}
-                                    <button type="button" class="btn btn-outline-secondary btn-sm cron-button" 
-                                            data-cron="{{ cron }}" data-toggle="tooltip" title="{{ desc }}">
-                                        {{ desc }}
-                                    </button>
-                                    {% endfor %}
-                                </div>
-                                
-                                <input type="text" class="form-control" id="schedule_interval" name="schedule_interval" 
-                                       placeholder="0 9 * * *">
-                                <div class="validation-feedback" id="cronValidation"></div>
-                            </div>
-                            
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
+
+                            <!-- Configuración de Programación -->
+                            <div class="config-section">
+                                <h6><i class="fas fa-clock"></i> Programación y Fechas</h6>
+                                <div class="mb-3">
                                     <label class="form-label">
-                                        Fecha de Inicio
+                                        Programación (Cron)
                                         <i class="fas fa-info-circle tooltip-icon" 
                                            data-bs-toggle="tooltip" 
-                                           title="Fecha y hora desde cuando el DAG empezará a ejecutarse."></i>
+                                           title="Expresión cron que define cuándo se ejecutará el DAG. Formato: minuto hora día mes día_semana"></i>
                                     </label>
-                                    <input type="datetime-local" class="form-control" id="start_date" name="start_date" required>
-                                </div>
-                                
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">
-                                        Fecha de Fin (Opcional)
-                                        <i class="fas fa-info-circle tooltip-icon" 
-                                           data-bs-toggle="tooltip" 
-                                           title="Fecha hasta cuando el DAG se ejecutará. Déjalo vacío para ejecución indefinida."></i>
-                                    </label>
-                                    <input type="datetime-local" class="form-control" id="end_date" name="end_date">
-                                </div>
-                            </div>
-                            
-                            <div class="row">
-                                <div class="col-md-4 mb-3">
-                                    <label class="form-label">
-                                        Tags (separados por coma)
-                                        <i class="fas fa-info-circle tooltip-icon" 
-                                           data-bs-toggle="tooltip" 
-                                           title="Etiquetas para categorizar y filtrar DAGs en la interfaz de Airflow."></i>
-                                    </label>
-                                    <input type="text" class="form-control" id="tags" name="tags" 
-                                           placeholder="etl, produccion, diario">
-                                </div>
-                                
-                                <div class="col-md-4 mb-3">
-                                    <label class="form-label">
-                                        Max Ejecuciones Activas
-                                        <i class="fas fa-info-circle tooltip-icon" 
-                                           data-bs-toggle="tooltip" 
-                                           title="Número máximo de instancias del DAG que pueden ejecutarse simultáneamente."></i>
-                                    </label>
-                                    <input type="number" class="form-control" id="max_active_runs" name="max_active_runs" 
-                                           value="1" min="1">
-                                </div>
-                                
-                                <div class="col-md-4 mb-3">
-                                    <label class="form-label">
-                                        Propietario
-                                        <i class="fas fa-info-circle tooltip-icon" 
-                                           data-bs-toggle="tooltip" 
-                                           title="Usuario responsable del DAG."></i>
-                                    </label>
-                                    <input type="text" class="form-control" id="owner" name="owner" value="airflow">
-                                </div>
-                            </div>
-                            
-                            <div class="row">
-                                <div class="col-md-3 mb-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="catchup" name="catchup">
-                                        <label class="form-check-label" for="catchup">
-                                            Catchup
-                                            <i class="fas fa-info-circle tooltip-icon" 
-                                               data-bs-toggle="tooltip" 
-                                               title="Si está activado, Airflow ejecutará todas las instancias perdidas desde start_date."></i>
-                                        </label>
+                                    
+                                    <div class="cron-quick-select">
+                                        {% for key, (cron, desc) in cron_options.items() %}
+                                        <button type="button" class="btn btn-outline-secondary btn-sm cron-button" 
+                                                data-cron="{{ cron }}" data-toggle="tooltip" title="{{ desc }}">
+                                            {{ desc }}
+                                        </button>
+                                        {% endfor %}
                                     </div>
+                                    
+                                    <input type="text" class="form-control" id="schedule_interval" name="schedule_interval" 
+                                           placeholder="0 9 * * *">
+                                    <div class="validation-feedback" id="cronValidation"></div>
                                 </div>
                                 
-                                <div class="col-md-3 mb-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="depends_on_past" name="depends_on_past">
-                                        <label class="form-check-label" for="depends_on_past">
-                                            Depende del Pasado
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">
+                                            Fecha de Inicio
                                             <i class="fas fa-info-circle tooltip-icon" 
                                                data-bs-toggle="tooltip" 
-                                               title="Si está activado, la tarea no se ejecutará hasta que la instancia anterior haya terminado exitosamente."></i>
+                                               title="Fecha y hora desde cuando el DAG empezará a ejecutarse."></i>
                                         </label>
+                                        <input type="datetime-local" class="form-control" id="start_date" name="start_date" required>
                                     </div>
-                                </div>
-                                
-                                <div class="col-md-3 mb-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="email_on_failure" name="email_on_failure">
-                                        <label class="form-check-label" for="email_on_failure">
-                                            Email en Fallo
+                                    
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">
+                                            Fecha de Fin (Opcional)
                                             <i class="fas fa-info-circle tooltip-icon" 
                                                data-bs-toggle="tooltip" 
-                                               title="Enviar email cuando una tarea falle."></i>
+                                               title="Fecha hasta cuando el DAG se ejecutará. Déjalo vacío para ejecución indefinida."></i>
                                         </label>
-                                    </div>
-                                </div>
-                                
-                                <div class="col-md-3 mb-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="email_on_retry" name="email_on_retry">
-                                        <label class="form-check-label" for="email_on_retry">
-                                            Email en Reintento
-                                            <i class="fas fa-info-circle tooltip-icon" 
-                                               data-bs-toggle="tooltip" 
-                                               title="Enviar email cuando una tarea se reintente."></i>
-                                        </label>
+                                        <input type="datetime-local" class="form-control" id="end_date" name="end_date">
                                     </div>
                                 </div>
                             </div>
-                            
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">
-                                        Número de Reintentos
-                                        <i class="fas fa-info-circle tooltip-icon" 
-                                           data-bs-toggle="tooltip" 
-                                           title="Número de veces que se reintentará una tarea si falla."></i>
-                                    </label>
-                                    <input type="number" class="form-control" id="retries" name="retries" 
-                                           value="1" min="0">
+
+                            <!-- Configuración de Ejecución -->
+                            <div class="config-section">
+                                <h6><i class="fas fa-play-circle"></i> Configuración de Ejecución</h6>
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">
+                                            Max Ejecuciones Activas
+                                            <i class="fas fa-info-circle tooltip-icon" 
+                                               data-bs-toggle="tooltip" 
+                                               title="Número máximo de instancias del DAG que pueden ejecutarse simultáneamente."></i>
+                                        </label>
+                                        <input type="number" class="form-control" id="max_active_runs" name="max_active_runs" 
+                                               value="1" min="1">
+                                    </div>
+                                    
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">
+                                            Concurrencia DAG
+                                            <i class="fas fa-info-circle tooltip-icon" 
+                                               data-bs-toggle="tooltip" 
+                                               title="Número máximo de tareas que pueden ejecutarse en paralelo para este DAG."></i>
+                                        </label>
+                                        <input type="number" class="form-control" id="concurrency" name="concurrency" 
+                                               min="1" placeholder="Sin límite">
+                                    </div>
+                                    
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">
+                                            Max Tareas Activas
+                                            <i class="fas fa-info-circle tooltip-icon" 
+                                               data-bs-toggle="tooltip" 
+                                               title="Número máximo de tareas activas por DAG run."></i>
+                                        </label>
+                                        <input type="number" class="form-control" id="max_active_tasks" name="max_active_tasks" 
+                                               min="1" placeholder="Sin límite">
+                                    </div>
                                 </div>
-                                
-                                <div class="col-md-6 mb-3">
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">
+                                            Timeout DAG Run (minutos)
+                                            <i class="fas fa-info-circle tooltip-icon" 
+                                               data-bs-toggle="tooltip" 
+                                               title="Tiempo máximo en minutos para que un DAG run complete."></i>
+                                        </label>
+                                        <input type="number" class="form-control" id="dagrun_timeout" name="dagrun_timeout" 
+                                               min="1" placeholder="Sin timeout">
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">
+                                            Vista Predeterminada
+                                            <i class="fas fa-info-circle tooltip-icon" 
+                                               data-bs-toggle="tooltip" 
+                                               title="Vista que se mostrará por defecto en la interfaz de Airflow."></i>
+                                        </label>
+                                        <select class="form-select" id="default_view" name="default_view">
+                                            <option value="graph">Gráfico</option>
+                                            <option value="tree">Árbol</option>
+                                            <option value="duration">Duración</option>
+                                            <option value="gantt">Gantt</option>
+                                            <option value="landing_times">Landing Times</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">
+                                            Orientación del Gráfico
+                                            <i class="fas fa-info-circle tooltip-icon" 
+                                               data-bs-toggle="tooltip" 
+                                               title="Orientación del gráfico de tareas."></i>
+                                        </label>
+                                        <select class="form-select" id="orientation" name="orientation">
+                                            <option value="LR">Izquierda a Derecha</option>
+                                            <option value="TB">Arriba hacia Abajo</option>
+                                            <option value="RL">Derecha a Izquierda</option>
+                                            <option value="BT">Abajo hacia Arriba</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <div class="form-check mt-4">
+                                            <input class="form-check-input" type="checkbox" id="is_paused_upon_creation" name="is_paused_upon_creation" checked>
+                                            <label class="form-check-label" for="is_paused_upon_creation">
+                                                Pausado al Crear
+                                                <i class="fas fa-info-circle tooltip-icon" 
+                                                   data-bs-toggle="tooltip" 
+                                                   title="Si está marcado, el DAG se creará pausado."></i>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Configuración de Notificaciones por Email -->
+                            <div class="config-section">
+                                <h6><i class="fas fa-envelope"></i> Notificaciones por Email</h6>
+                                <div class="mb-3">
                                     <label class="form-label">
-                                        Retraso entre Reintentos (segundos)
+                                        Lista de Correos Electrónicos
                                         <i class="fas fa-info-circle tooltip-icon" 
                                            data-bs-toggle="tooltip" 
-                                           title="Tiempo de espera en segundos entre reintentos."></i>
+                                           title="Lista de correos separados por comas para recibir notificaciones."></i>
                                     </label>
-                                    <input type="number" class="form-control" id="retry_delay" name="retry_delay" 
-                                           value="300" min="0">
+                                    <textarea class="form-control" id="email" name="email" rows="2" 
+                                              placeholder="admin@empresa.com, dev-team@empresa.com"></textarea>
+                                    <div class="form-text">Separar múltiples emails con comas</div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="email_on_failure" name="email_on_failure">
+                                            <label class="form-check-label" for="email_on_failure">
+                                                Email en Fallo
+                                                <i class="fas fa-info-circle tooltip-icon" 
+                                                   data-bs-toggle="tooltip" 
+                                                   title="Enviar email cuando una tarea falle."></i>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-4 mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="email_on_retry" name="email_on_retry">
+                                            <label class="form-check-label" for="email_on_retry">
+                                                Email en Reintento
+                                                <i class="fas fa-info-circle tooltip-icon" 
+                                                   data-bs-toggle="tooltip" 
+                                                   title="Enviar email cuando una tarea se reintente."></i>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-4 mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="email_on_success" name="email_on_success">
+                                            <label class="form-check-label" for="email_on_success">
+                                                Email en Éxito
+                                                <i class="fas fa-info-circle tooltip-icon" 
+                                                   data-bs-toggle="tooltip" 
+                                                   title="Enviar email cuando una tarea termine exitosamente."></i>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Configuración de Reintentos y Timeouts -->
+                            <div class="config-section">
+                                <h6><i class="fas fa-redo"></i> Reintentos y Timeouts</h6>
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">
+                                            Número de Reintentos
+                                            <i class="fas fa-info-circle tooltip-icon" 
+                                               data-bs-toggle="tooltip" 
+                                               title="Número de veces que se reintentará una tarea si falla."></i>
+                                        </label>
+                                        <input type="number" class="form-control" id="retries" name="retries" 
+                                               value="1" min="0">
+                                    </div>
+                                    
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">
+                                            Retraso entre Reintentos (segundos)
+                                            <i class="fas fa-info-circle tooltip-icon" 
+                                               data-bs-toggle="tooltip" 
+                                               title="Tiempo de espera en segundos entre reintentos."></i>
+                                        </label>
+                                        <input type="number" class="form-control" id="retry_delay" name="retry_delay" 
+                                               value="300" min="0">
+                                    </div>
+
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">
+                                            Max Retraso Reintento (segundos)
+                                            <i class="fas fa-info-circle tooltip-icon" 
+                                               data-bs-toggle="tooltip" 
+                                               title="Retraso máximo entre reintentos cuando se usa backoff exponencial."></i>
+                                        </label>
+                                        <input type="number" class="form-control" id="max_retry_delay" name="max_retry_delay" 
+                                               min="0" placeholder="Sin límite">
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">
+                                            Timeout Ejecución (segundos)
+                                            <i class="fas fa-info-circle tooltip-icon" 
+                                               data-bs-toggle="tooltip" 
+                                               title="Tiempo máximo de ejecución para una tarea."></i>
+                                        </label>
+                                        <input type="number" class="form-control" id="execution_timeout" name="execution_timeout" 
+                                               min="1" placeholder="Sin timeout">
+                                    </div>
+
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">
+                                            Timeout General (segundos)
+                                            <i class="fas fa-info-circle tooltip-icon" 
+                                               data-bs-toggle="tooltip" 
+                                               title="Timeout general para las tareas."></i>
+                                        </label>
+                                        <input type="number" class="form-control" id="timeout" name="timeout" 
+                                               min="1" placeholder="Sin timeout">
+                                    </div>
+
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">
+                                            SLA (segundos)
+                                            <i class="fas fa-info-circle tooltip-icon" 
+                                               data-bs-toggle="tooltip" 
+                                               title="Service Level Agreement - tiempo máximo esperado."></i>
+                                        </label>
+                                        <input type="number" class="form-control" id="sla" name="sla" 
+                                               min="1" placeholder="Sin SLA">
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="retry_exponential_backoff" name="retry_exponential_backoff">
+                                            <label class="form-check-label" for="retry_exponential_backoff">
+                                                Backoff Exponencial en Reintentos
+                                                <i class="fas fa-info-circle tooltip-icon" 
+                                                   data-bs-toggle="tooltip" 
+                                                   title="Usar backoff exponencial para incrementar el tiempo entre reintentos."></i>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="depends_on_past" name="depends_on_past">
+                                            <label class="form-check-label" for="depends_on_past">
+                                                Depende del Pasado
+                                                <i class="fas fa-info-circle tooltip-icon" 
+                                                   data-bs-toggle="tooltip" 
+                                                   title="Si está activado, la tarea no se ejecutará hasta que la instancia anterior haya terminado exitosamente."></i>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Configuración Avanzada -->
+                            <div class="accordion mb-4" id="advancedConfigAccordion">
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#advancedConfig">
+                                            <i class="fas fa-cog me-2"></i> Configuración Avanzada
+                                        </button>
+                                    </h2>
+                                    <div id="advancedConfig" class="accordion-collapse collapse" data-bs-parent="#advancedConfigAccordion">
+                                        <div class="accordion-body">
+                                            <!-- Pool y Queue Configuration -->
+                                            <div class="config-section">
+                                                <h6><i class="fas fa-swimming-pool"></i> Pool y Queue</h6>
+                                                <div class="row">
+                                                    <div class="col-md-4 mb-3">
+                                                        <label class="form-label">
+                                                            Pool
+                                                            <i class="fas fa-info-circle tooltip-icon" 
+                                                               data-bs-toggle="tooltip" 
+                                                               title="Pool de recursos a usar para las tareas."></i>
+                                                        </label>
+                                                        <input type="text" class="form-control" id="pool" name="pool" placeholder="default_pool">
+                                                    </div>
+                                                    
+                                                    <div class="col-md-4 mb-3">
+                                                        <label class="form-label">
+                                                            Pool Slots
+                                                            <i class="fas fa-info-circle tooltip-icon" 
+                                                               data-bs-toggle="tooltip" 
+                                                               title="Número de slots del pool a ocupar."></i>
+                                                        </label>
+                                                        <input type="number" class="form-control" id="pool_slots" name="pool_slots" 
+                                                               value="1" min="1">
+                                                    </div>
+
+                                                    <div class="col-md-4 mb-3">
+                                                        <label class="form-label">
+                                                            Queue
+                                                            <i class="fas fa-info-circle tooltip-icon" 
+                                                               data-bs-toggle="tooltip" 
+                                                               title="Cola de ejecución para las tareas."></i>
+                                                        </label>
+                                                        <input type="text" class="form-control" id="queue" name="queue" value="default">
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Priority and Weight -->
+                                            <div class="config-section">
+                                                <h6><i class="fas fa-weight-hanging"></i> Prioridad y Peso</h6>
+                                                <div class="row">
+                                                    <div class="col-md-6 mb-3">
+                                                        <label class="form-label">
+                                                            Peso de Prioridad
+                                                            <i class="fas fa-info-circle tooltip-icon" 
+                                                               data-bs-toggle="tooltip" 
+                                                               title="Peso de prioridad para el scheduling de tareas."></i>
+                                                        </label>
+                                                        <input type="number" class="form-control" id="priority_weight" name="priority_weight" 
+                                                               value="1" min="1">
+                                                    </div>
+
+                                                    <div class="col-md-6 mb-3">
+                                                        <label class="form-label">
+                                                            Regla de Peso
+                                                            <i class="fas fa-info-circle tooltip-icon" 
+                                                               data-bs-toggle="tooltip" 
+                                                               title="Cómo calcular el peso total de las tareas."></i>
+                                                        </label>
+                                                        <select class="form-select" id="weight_rule" name="weight_rule">
+                                                            <option value="downstream">Downstream</option>
+                                                            <option value="upstream">Upstream</option>
+                                                            <option value="absolute">Absolute</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Trigger Rules and Callbacks -->
+                                            <div class="config-section">
+                                                <h6><i class="fas fa-play"></i> Trigger Rules y Callbacks</h6>
+                                                <div class="row">
+                                                    <div class="col-md-6 mb-3">
+                                                        <label class="form-label">
+                                                            Trigger Rule
+                                                            <i class="fas fa-info-circle tooltip-icon" 
+                                                               data-bs-toggle="tooltip" 
+                                                               title="Regla que define cuándo puede ejecutarse la tarea."></i>
+                                                        </label>
+                                                        <select class="form-select" id="trigger_rule" name="trigger_rule">
+                                                            <option value="all_success">All Success</option>
+                                                            <option value="all_failed">All Failed</option>
+                                                            <option value="all_done">All Done</option>
+                                                            <option value="one_success">One Success</option>
+                                                            <option value="one_failed">One Failed</option>
+                                                            <option value="none_failed">None Failed</option>
+                                                            <option value="none_skipped">None Skipped</option>
+                                                            <option value="dummy">Dummy</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <div class="col-md-6 mb-3">
+                                                        <label class="form-label">
+                                                            Callback SLA Miss
+                                                            <i class="fas fa-info-circle tooltip-icon" 
+                                                               data-bs-toggle="tooltip" 
+                                                               title="Función callback cuando se pierde el SLA."></i>
+                                                        </label>
+                                                        <input type="text" class="form-control" id="sla_miss_callback" name="sla_miss_callback" 
+                                                               placeholder="my_sla_callback_function">
+                                                    </div>
+                                                </div>
+
+                                                <div class="row">
+                                                    <div class="col-md-4 mb-3">
+                                                        <label class="form-label">
+                                                            Callback en Fallo
+                                                            <i class="fas fa-info-circle tooltip-icon" 
+                                                               data-bs-toggle="tooltip" 
+                                                               title="Función callback cuando falla la tarea."></i>
+                                                        </label>
+                                                        <input type="text" class="form-control" id="on_failure_callback" name="on_failure_callback" 
+                                                               placeholder="my_failure_callback">
+                                                    </div>
+
+                                                    <div class="col-md-4 mb-3">
+                                                        <label class="form-label">
+                                                            Callback en Éxito
+                                                            <i class="fas fa-info-circle tooltip-icon" 
+                                                               data-bs-toggle="tooltip" 
+                                                               title="Función callback cuando la tarea es exitosa."></i>
+                                                        </label>
+                                                        <input type="text" class="form-control" id="on_success_callback" name="on_success_callback" 
+                                                               placeholder="my_success_callback">
+                                                    </div>
+
+                                                    <div class="col-md-4 mb-3">
+                                                        <label class="form-label">
+                                                            Callback en Reintento
+                                                            <i class="fas fa-info-circle tooltip-icon" 
+                                                               data-bs-toggle="tooltip" 
+                                                               title="Función callback cuando se reintenta la tarea."></i>
+                                                        </label>
+                                                        <input type="text" class="form-control" id="on_retry_callback" name="on_retry_callback" 
+                                                               placeholder="my_retry_callback">
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Access Control y Params -->
+                                            <div class="config-section">
+                                                <h6><i class="fas fa-shield-alt"></i> Control de Acceso y Parámetros</h6>
+                                                <div class="row">
+                                                    <div class="col-md-6 mb-3">
+                                                        <label class="form-label">
+                                                            Control de Acceso (JSON)
+                                                            <i class="fas fa-info-circle tooltip-icon" 
+                                                               data-bs-toggle="tooltip" 
+                                                               title="Configuración de control de acceso en formato JSON."></i>
+                                                        </label>
+                                                        <textarea class="form-control" id="access_control" name="access_control" rows="3" 
+                                                                  placeholder='{"role:Admin": {"can_dag_read", "can_dag_edit"}}'></textarea>
+                                                    </div>
+
+                                                    <div class="col-md-6 mb-3">
+                                                        <label class="form-label">
+                                                            Parámetros del DAG (JSON)
+                                                            <i class="fas fa-info-circle tooltip-icon" 
+                                                               data-bs-toggle="tooltip" 
+                                                               title="Parámetros personalizados para el DAG en formato JSON."></i>
+                                                        </label>
+                                                        <textarea class="form-control" id="params" name="params" rows="3" 
+                                                                  placeholder='{"env": "prod", "debug": false}'></textarea>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Otras Configuraciones -->
+                                            <div class="config-section">
+                                                <h6><i class="fas fa-sliders-h"></i> Otras Configuraciones</h6>
+                                                <div class="row">
+                                                    <div class="col-md-4 mb-3">
+                                                        <label class="form-label">
+                                                            Tags (separados por coma)
+                                                            <i class="fas fa-info-circle tooltip-icon" 
+                                                               data-bs-toggle="tooltip" 
+                                                               title="Etiquetas para categorizar y filtrar DAGs en la interfaz de Airflow."></i>
+                                                        </label>
+                                                        <input type="text" class="form-control" id="tags" name="tags" 
+                                                               placeholder="etl, produccion, diario">
+                                                    </div>
+
+                                                    <div class="col-md-4 mb-3">
+                                                        <div class="form-check mt-4">
+                                                            <input class="form-check-input" type="checkbox" id="catchup" name="catchup">
+                                                            <label class="form-check-label" for="catchup">
+                                                                Catchup
+                                                                <i class="fas fa-info-circle tooltip-icon" 
+                                                                   data-bs-toggle="tooltip" 
+                                                                   title="Si está activado, Airflow ejecutará todas las instancias perdidas desde start_date."></i>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="col-md-4 mb-3">
+                                                        <div class="form-check mt-4">
+                                                            <input class="form-check-input" type="checkbox" id="provide_context" name="provide_context" checked>
+                                                            <label class="form-check-label" for="provide_context">
+                                                                Provide Context
+                                                                <i class="fas fa-info-circle tooltip-icon" 
+                                                                   data-bs-toggle="tooltip" 
+                                                                   title="Proporcionar contexto a las tareas (recomendado)."></i>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="form-check mb-3">
+                                                    <input class="form-check-input" type="checkbox" id="render_template_as_native_obj" name="render_template_as_native_obj">
+                                                    <label class="form-check-label" for="render_template_as_native_obj">
+                                                        Render Template as Native Object
+                                                        <i class="fas fa-info-circle tooltip-icon" 
+                                                           data-bs-toggle="tooltip" 
+                                                           title="Renderizar templates como objetos nativos en lugar de strings."></i>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </form>
@@ -447,4 +872,4 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
-</html>
+</html></button>

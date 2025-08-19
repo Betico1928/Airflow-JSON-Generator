@@ -1,6 +1,6 @@
 class DAGGenerator {
     constructor() {
-        this.jsonObjects = {};  // Cambio de tasks a jsonObjects
+        this.jsonObjects = {};
         this.currentEditingObject = null;
         this.currentObjectData = {};
         this.taskTemplates = {};
@@ -19,13 +19,11 @@ class DAGGenerator {
         this.currentEditingObject = objectName;
         
         if (objectName && this.jsonObjects[objectName]) {
-            // Editando objeto existente
             document.getElementById('jsonModalTitle').textContent = `Editar Objeto: ${objectName}`;
             document.getElementById('objectName').value = objectName;
             document.getElementById('objectName').disabled = true;
             this.currentObjectData = JSON.parse(JSON.stringify(this.jsonObjects[objectName]));
         } else {
-            // Creando objeto nuevo
             document.getElementById('jsonModalTitle').textContent = 'Crear Nuevo Objeto';
             document.getElementById('objectName').value = '';
             document.getElementById('objectName').disabled = false;
@@ -175,9 +173,10 @@ class DAGGenerator {
         Object.entries(this.currentObjectData).forEach(([key, value]) => {
             const valueType = Array.isArray(value) ? 'array' : typeof value;
             const valuePreview = this.getValuePreview(value);
+            const escapedValue = JSON.stringify(value).replace(/"/g, '&quot;');
             
             html += `
-                <div class="property-item p-2 mb-2 border rounded">
+                <div class="property-item p-2 mb-2 border rounded" data-type="${valueType}">
                     <div class="d-flex justify-content-between align-items-start">
                         <div class="flex-grow-1">
                             <strong>${key}</strong> 
@@ -185,7 +184,7 @@ class DAGGenerator {
                             <div class="small text-muted mt-1">${valuePreview}</div>
                         </div>
                         <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-primary btn-sm" onclick="dagGenerator.editProperty('${key}', ${JSON.stringify(value).replace(/"/g, '&quot;')})">
+                            <button class="btn btn-outline-primary btn-sm" onclick="dagGenerator.editProperty('${key}', ${escapedValue})">
                                 <i class="fas fa-edit"></i>
                             </button>
                             <button class="btn btn-outline-danger btn-sm" onclick="dagGenerator.removeProperty('${key}')">
@@ -243,7 +242,6 @@ class DAGGenerator {
             const jsonText = document.getElementById('importJsonTextarea').value.trim();
             const imported = JSON.parse(jsonText);
             
-            // Merge con los datos existentes
             this.currentObjectData = { ...this.currentObjectData, ...imported };
             
             this.renderPropertiesList();
@@ -264,7 +262,6 @@ class DAGGenerator {
             return;
         }
         
-        // Validar que el nombre sea válido para JSON
         if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(objectName)) {
             this.showAlert('El nombre del objeto debe ser un identificador válido (solo letras, números y _)', 'warning');
             return;
@@ -341,10 +338,8 @@ class DAGGenerator {
     }
     
     initializeCronInterpreter() {
-        // Crear el contenedor para la interpretación del cron
         const cronContainer = document.getElementById('schedule_interval').parentNode;
         
-        // Crear el elemento de interpretación
         const interpretationDiv = document.createElement('div');
         interpretationDiv.id = 'cronInterpretation';
         interpretationDiv.className = 'cron-interpretation mt-2 p-3 bg-light border rounded';
@@ -385,10 +380,8 @@ class DAGGenerator {
     generateCronInterpretation(minute, hour, day, month, dayOfWeek) {
         let interpretation = "";
         
-        // Interpretar frecuencia base
         const frequency = this.determineCronFrequency(minute, hour, day, month, dayOfWeek);
         
-        // Generar descripción según la frecuencia
         switch (frequency.type) {
             case 'minute':
                 interpretation = this.interpretMinuteSchedule(minute, hour, day, month, dayOfWeek);
@@ -416,7 +409,6 @@ class DAGGenerator {
     }
     
     determineCronFrequency(minute, hour, day, month, dayOfWeek) {
-        // Determinar el tipo de frecuencia basado en los valores
         if (minute !== '*' && hour === '*' && day === '*' && month === '*' && dayOfWeek === '*') {
             return { type: 'hourly' };
         } else if (hour !== '*' && day === '*' && month === '*' && dayOfWeek === '*') {
@@ -498,7 +490,6 @@ class DAGGenerator {
     interpretComplexSchedule(minute, hour, day, month, dayOfWeek) {
         let parts = [];
         
-        // Minutos
         if (minute !== '*') {
             if (minute.includes('/')) {
                 parts.push(`cada ${minute.split('/')[1]} minutos`);
@@ -509,7 +500,6 @@ class DAGGenerator {
             }
         }
         
-        // Horas
         if (hour !== '*') {
             if (hour.includes('/')) {
                 parts.push(`cada ${hour.split('/')[1]} horas`);
@@ -521,7 +511,6 @@ class DAGGenerator {
             }
         }
         
-        // Días del mes
         if (day !== '*') {
             if (day.includes('/')) {
                 parts.push(`cada ${day.split('/')[1]} días`);
@@ -532,12 +521,10 @@ class DAGGenerator {
             }
         }
         
-        // Meses
         if (month !== '*') {
             parts.push(this.interpretMonth(month));
         }
         
-        // Días de la semana
         if (dayOfWeek !== '*') {
             parts.push(this.interpretDayOfWeek(dayOfWeek));
         }
@@ -604,20 +591,16 @@ class DAGGenerator {
         document.getElementById('processImportBtn').addEventListener('click', () => this.processImportedJson());
         document.getElementById('saveComplexPropertyBtn').addEventListener('click', () => this.saveComplexProperty());
         
-        // Auto-actualizar vista previa del objeto
         document.getElementById('objectName').addEventListener('input', () => this.updateObjectPreview());
         
-        // Botones de vista previa
         document.getElementById('copyJsonBtn').addEventListener('click', () => this.copyJson());
         document.getElementById('downloadJsonBtn').addEventListener('click', () => this.downloadJson());
         
-        // Validación de cron en tiempo real
         document.getElementById('schedule_interval').addEventListener('input', (e) => {
             this.validateCron(e.target.value);
             this.interpretCron(e.target.value);
         });
         
-        // Botones de cron rápido
         document.querySelectorAll('.cron-button').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const cronExpression = e.target.dataset.cron;
@@ -627,15 +610,10 @@ class DAGGenerator {
             });
         });
         
-        // Cambio de tipo de tarea en el modal - NO NECESARIO
-        // document.getElementById('task_type').addEventListener('change', (e) => this.loadTaskParameters(e.target.value));
-        
-        // Auto-generar vista previa cuando cambian los campos
         this.setupAutoPreview();
     }
     
     initializeTooltips() {
-        // Inicializar todos los tooltips de Bootstrap
         const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
         tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl);
@@ -643,28 +621,22 @@ class DAGGenerator {
     }
     
     setDefaultDateTime() {
-        // Establecer fecha y hora actual como predeterminada
         const now = new Date();
         const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
         document.getElementById('start_date').value = localDateTime;
     }
     
-    async loadTaskTemplates() {
-        try {
-            const response = await fetch('/task_templates');
-            this.taskTemplates = await response.json();
-        } catch (error) {
-            console.error('Error cargando plantillas de tareas:', error);
-            this.showAlert('Error cargando plantillas de tareas', 'danger');
-        }
-    }
-    
     setupAutoPreview() {
-        // Lista de campos a monitorear para auto-preview
         const fieldsToWatch = [
             'dag_id', 'description', 'schedule_interval', 'start_date', 'end_date',
-            'tags', 'max_active_runs', 'owner', 'catchup', 'depends_on_past',
-            'email_on_failure', 'email_on_retry', 'retries', 'retry_delay'
+            'tags', 'max_active_runs', 'concurrency', 'max_active_tasks', 'dagrun_timeout',
+            'owner', 'catchup', 'depends_on_past', 'email_on_failure', 'email_on_retry', 
+            'email_on_success', 'retries', 'retry_delay', 'max_retry_delay', 'execution_timeout',
+            'timeout', 'sla', 'retry_exponential_backoff', 'pool', 'pool_slots', 'queue',
+            'priority_weight', 'weight_rule', 'trigger_rule', 'default_view', 'orientation',
+            'is_paused_upon_creation', 'provide_context', 'render_template_as_native_obj',
+            'email', 'on_failure_callback', 'on_success_callback', 'on_retry_callback',
+            'sla_miss_callback', 'access_control', 'params', 'doc_md'
         ];
         
         fieldsToWatch.forEach(fieldId => {
@@ -695,419 +667,166 @@ class DAGGenerator {
             const isValid = result.valid;
             const message = result.message;
             
-            this.setCronValidation(isValid ? 'is-valid' : 'is-invalid', message);
+            this.    setCronValidation(isValid ? 'is-valid' : 'is-invalid', message);
         } catch (error) {
             console.error('Error validando cron:', error);
             this.setCronValidation('is-invalid', 'Error validando expresión');
         }
     }
     
-    setCronValidation(className, message) {
+    setCronValidation(validationClass, message) {
         const input = document.getElementById('schedule_interval');
         const feedback = document.getElementById('cronValidation');
         
         // Limpiar clases anteriores
         input.classList.remove('is-valid', 'is-invalid');
+        feedback.classList.remove('valid-feedback', 'invalid-feedback');
         
-        // Aplicar nueva clase si hay una
-        if (className) {
-            input.classList.add(className);
-        }
-        
-        // Establecer mensaje
-        feedback.textContent = message;
-        feedback.className = `validation-feedback ${className === 'is-valid' ? 'text-success' : 'text-danger'}`;
-    }
-    
-    showTaskModal() {
-        // Limpiar el formulario
-        document.getElementById('taskForm').reset();
-        
-        // Cargar parámetros para el tipo predeterminado
-        this.loadTaskParameters('BashOperator');
-        
-        // Mostrar modal
-        const modal = new bootstrap.Modal(document.getElementById('taskModal'));
-        modal.show();
-    }
-    
-    loadTaskParameters(taskType) {
-        const container = document.getElementById('taskParameters');
-        const template = this.taskTemplates[taskType] || {};
-        
-        container.innerHTML = '';
-        
-        Object.entries(template).forEach(([paramName, defaultValue]) => {
-            const div = document.createElement('div');
-            div.className = 'mb-3';
-            
-            const label = document.createElement('label');
-            label.className = 'form-label';
-            label.textContent = this.formatParameterName(paramName);
-            
-            const input = this.createInputForParameter(paramName, defaultValue);
-            input.name = paramName;
-            input.id = `param_${paramName}`;
-            
-            div.appendChild(label);
-            div.appendChild(input);
-            container.appendChild(div);
-        });
-    }
-    
-    formatParameterName(paramName) {
-        return paramName.replace(/_/g, ' ')
-                       .split(' ')
-                       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                       .join(' ');
-    }
-    
-    createInputForParameter(paramName, defaultValue) {
-        const input = document.createElement('input');
-        input.className = 'form-control';
-        
-        if (typeof defaultValue === 'boolean') {
-            input.type = 'checkbox';
-            input.className = 'form-check-input';
-            input.checked = defaultValue;
-        } else if (typeof defaultValue === 'number') {
-            input.type = 'number';
-            input.value = defaultValue;
-        } else if (Array.isArray(defaultValue)) {
-            input.type = 'text';
-            input.placeholder = 'Valores separados por coma';
-            input.value = defaultValue.join(', ');
-        } else if (typeof defaultValue === 'object') {
-            input.type = 'text';
-            input.placeholder = 'JSON válido';
-            input.value = JSON.stringify(defaultValue);
+        if (validationClass) {
+            input.classList.add(validationClass);
+            feedback.classList.add(validationClass === 'is-valid' ? 'valid-feedback' : 'invalid-feedback');
+            feedback.textContent = message;
         } else {
-            input.type = 'text';
-            input.value = defaultValue || '';
+            feedback.textContent = '';
         }
-        
-        // Añadir placeholders específicos
-        if (paramName === 'bash_command') {
-            input.placeholder = 'echo "Hello World"';
-        } else if (paramName === 'python_callable') {
-            input.placeholder = 'my_function';
-        } else if (paramName === 'sql') {
-            input.placeholder = 'SELECT * FROM my_table';
-        } else if (paramName === 'endpoint') {
-            input.placeholder = '/api/status';
-        }
-        
-        return input;
     }
     
-    saveTask() {
-        const form = document.getElementById('taskForm');
-        const formData = new FormData(form);
+    collectFormData() {
+        const formData = {};
+        const form = document.getElementById('dagConfigForm');
+        const formElements = form.querySelectorAll('input, textarea, select');
         
-        const task = {
-            task_id: formData.get('task_id'),
-            task_type: formData.get('task_type'),
-            parameters: {},
-            dependencies: formData.get('dependencies') ? 
-                         formData.get('dependencies').split(',').map(s => s.trim()).filter(s => s) : []
-        };
-        
-        // Recopilar parámetros
-        const paramInputs = document.querySelectorAll('#taskParameters input');
-        paramInputs.forEach(input => {
-            const paramName = input.name;
-            let value = input.value;
+        formElements.forEach(element => {
+            const name = element.name;
+            if (!name) return;
             
-            if (input.type === 'checkbox') {
-                value = input.checked;
-            } else if (input.type === 'number') {
-                value = parseInt(value) || 0;
-            } else if (value.startsWith('[') || value.startsWith('{')) {
-                try {
-                    value = JSON.parse(value);
-                } catch (e) {
-                    // Si no es JSON válido, mantener como string
-                }
-            } else if (paramName.includes('args') && value.includes(',')) {
-                value = value.split(',').map(s => s.trim()).filter(s => s);
+            let value;
+            if (element.type === 'checkbox') {
+                value = element.checked;
+            } else if (element.type === 'number') {
+                value = element.value.trim() !== '' ? parseFloat(element.value) : null;
+            } else if (element.type === 'datetime-local') {
+                value = element.value ? new Date(element.value).toISOString() : null;
+            } else {
+                value = element.value.trim() || null;
             }
             
-            task.parameters[paramName] = value;
+            // No incluir valores null o vacíos excepto para booleanos
+            if (value !== null && value !== '' || element.type === 'checkbox') {
+                formData[name] = value;
+            }
         });
         
-        // Validar que el task_id sea único
-        if (this.tasks.some(t => t.task_id === task.task_id)) {
-            this.showAlert('Ya existe una tarea con ese ID', 'warning');
-            return;
-        }
-        
-        this.tasks.push(task);
-        this.renderTasks();
-        this.updatePreview();
-        
-        // Cerrar modal
-        const modal = bootstrap.Modal.getInstance(document.getElementById('taskModal'));
-        modal.hide();
-        
-        this.showAlert(`Tarea "${task.task_id}" agregada exitosamente`, 'success');
-    }
-    
-    renderTasks() {
-        const container = document.getElementById('tasksContainer');
-        
-        if (this.tasks.length === 0) {
-            container.innerHTML = '<p class="text-muted">No hay tareas configuradas. Haz clic en "Agregar Tarea" para comenzar.</p>';
-            return;
-        }
-        
-        container.innerHTML = '';
-        
-        this.tasks.forEach((task, index) => {
-            const taskCard = document.createElement('div');
-            taskCard.className = 'task-card p-3';
-            taskCard.innerHTML = `
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <h6 class="mb-0">
-                        <i class="fas fa-play-circle text-primary"></i>
-                        ${task.task_id}
-                    </h6>
-                    <div>
-                        <button class="btn btn-sm btn-outline-primary me-1" onclick="dagGenerator.editTask(${index})">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="dagGenerator.removeTask(${index})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-                <p class="mb-1"><strong>Tipo:</strong> ${task.task_type}</p>
-                ${task.dependencies.length > 0 ? `<p class="mb-1"><strong>Dependencias:</strong> ${task.dependencies.join(', ')}</p>` : ''}
-                <div class="mt-2">
-                    <small class="text-muted">
-                        <strong>Parámetros:</strong> ${Object.keys(task.parameters).length} configurados
-                    </small>
-                </div>
-            `;
-            
-            container.appendChild(taskCard);
-        });
-    }
-    
-    editTask(index) {
-        const task = this.tasks[index];
-        
-        // Llenar el formulario con los datos de la tarea
-        document.getElementById('task_id').value = task.task_id;
-        document.getElementById('task_type').value = task.task_type;
-        document.getElementById('dependencies').value = task.dependencies.join(', ');
-        
-        // Cargar parámetros y llenar valores
-        this.loadTaskParameters(task.task_type);
-        
-        setTimeout(() => {
-            Object.entries(task.parameters).forEach(([paramName, value]) => {
-                const input = document.getElementById(`param_${paramName}`);
-                if (input) {
-                    if (input.type === 'checkbox') {
-                        input.checked = value;
-                    } else if (typeof value === 'object') {
-                        input.value = JSON.stringify(value);
-                    } else if (Array.isArray(value)) {
-                        input.value = value.join(', ');
-                    } else {
-                        input.value = value;
-                    }
-                }
-            });
-        }, 100);
-        
-        // Remover la tarea actual y mostrar modal
-        this.tasks.splice(index, 1);
-        this.renderTasks();
-        
-        const modal = new bootstrap.Modal(document.getElementById('taskModal'));
-        modal.show();
-    }
-    
-    removeTask(index) {
-        if (confirm('¿Estás seguro de que quieres eliminar esta tarea?')) {
-            const task = this.tasks[index];
-            this.tasks.splice(index, 1);
-            this.renderTasks();
-            this.updatePreview();
-            this.showAlert(`Tarea "${task.task_id}" eliminada`, 'info');
-        }
+        return formData;
     }
     
     async generateConfiguration() {
-        const form = document.getElementById('dagConfigForm');
-        const formData = new FormData(form);
-        
-        const dagConfig = {};
-        
-        // Recopilar datos del formulario
-        for (let [key, value] of formData.entries()) {
-            if (key === 'tags') {
-                dagConfig[key] = value;
-            } else if (['max_active_runs', 'retries', 'retry_delay'].includes(key)) {
-                dagConfig[key] = parseInt(value) || (key === 'max_active_runs' ? 1 : 0);
-            } else if (['catchup', 'depends_on_past', 'email_on_failure', 'email_on_retry'].includes(key)) {
-                dagConfig[key] = document.getElementById(key).checked;
-            } else {
-                dagConfig[key] = value;
-            }
-        }
-        
-        // Preparar datos para enviar (incluyendo objetos JSON personalizados)
-        const payload = {
-            dag_config: dagConfig,
-            custom_objects: this.jsonObjects  // Cambio de tasks a custom_objects
-        };
-        
         try {
+            this.showLoading(true);
+            
+            const dagConfig = this.collectFormData();
+            const customObjects = { ...this.jsonObjects };
+            
             const response = await fetch('/generate_config', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({
+                    dag_config: dagConfig,
+                    custom_objects: customObjects
+                })
             });
             
             const result = await response.json();
             
             if (result.success) {
-                this.currentConfig = JSON.parse(result.config);
+                this.currentConfig = result.config_object;
                 this.updateJsonPreview(result.config);
-                this.showAlert('Configuración generada exitosamente', 'success');
+                this.showAlert('Configuración generada exitosamente!', 'success');
             } else {
-                const errors = result.errors.join('<br>');
-                this.showAlert(`Errores en la configuración:<br>${errors}`, 'danger');
+                const errors = result.errors || ['Error desconocido'];
+                this.showAlert('Errores en la configuración:<br>• ' + errors.join('<br>• '), 'danger');
             }
+            
         } catch (error) {
             console.error('Error generando configuración:', error);
-            this.showAlert('Error generando la configuración', 'danger');
+            this.showAlert('Error interno del servidor', 'danger');
+        } finally {
+            this.showLoading(false);
         }
     }
     
     updatePreview() {
-        // Generar una vista previa básica sin validación completa
-        const form = document.getElementById('dagConfigForm');
-        const formData = new FormData(form);
+        const dagConfig = this.collectFormData();
+        const customObjects = { ...this.jsonObjects };
         
-        const preview = {
-            dag_id: formData.get('dag_id') || 'mi_dag',
-            description: formData.get('description') || '',
-            schedule_interval: formData.get('schedule_interval') || null,
-            start_date: formData.get('start_date') || '',
-            end_date: formData.get('end_date') || null,
-            catchup: document.getElementById('catchup').checked,
-            max_active_runs: parseInt(formData.get('max_active_runs')) || 1,
-            tags: formData.get('tags') ? formData.get('tags').split(',').map(t => t.trim()).filter(t => t) : [],
-            ...this.jsonObjects  // Agregar todos los objetos JSON personalizados
+        // Crear preview básico
+        const previewConfig = {
+            dag_id: dagConfig.dag_id || 'mi_dag',
+            description: dagConfig.description || '',
+            schedule_interval: dagConfig.schedule_interval || null,
+            start_date: dagConfig.start_date || null,
+            default_args: {
+                owner: dagConfig.owner || 'airflow',
+                retries: dagConfig.retries || 1,
+                retry_delay: dagConfig.retry_delay || 300
+            },
+            ...customObjects
         };
         
-        this.updateJsonPreview(JSON.stringify(preview, null, 2));
+        // Limpiar valores null
+        const cleanConfig = this.cleanConfigObject(previewConfig);
+        
+        this.updateJsonPreview(JSON.stringify(cleanConfig, null, 2));
+    }
+    
+    cleanConfigObject(obj) {
+        if (obj === null || obj === undefined) {
+            return null;
+        }
+        
+        if (Array.isArray(obj)) {
+            return obj.map(item => this.cleanConfigObject(item)).filter(item => item !== null);
+        }
+        
+        if (typeof obj === 'object') {
+            const cleaned = {};
+            for (const [key, value] of Object.entries(obj)) {
+                const cleanedValue = this.cleanConfigObject(value);
+                if (cleanedValue !== null && cleanedValue !== '' && 
+                    !(Array.isArray(cleanedValue) && cleanedValue.length === 0) &&
+                    !(typeof cleanedValue === 'object' && Object.keys(cleanedValue).length === 0)) {
+                    cleaned[key] = cleanedValue;
+                }
+            }
+            return cleaned;
+        }
+        
+        return obj;
     }
     
     updateJsonPreview(jsonString) {
-        document.getElementById('jsonPreview').textContent = jsonString;
+        const preview = document.getElementById('jsonPreview');
+        preview.textContent = jsonString;
     }
     
-    copyJson() {
-        const jsonText = document.getElementById('jsonPreview').textContent;
-        
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(jsonText).then(() => {
-                this.showAlert('JSON copiado al portapapeles', 'success');
-            }).catch(() => {
-                this.fallbackCopyTextToClipboard(jsonText);
-            });
+    showLoading(show) {
+        const btn = document.getElementById('generateConfigBtn');
+        if (show) {
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando...';
+            btn.disabled = true;
         } else {
-            this.fallbackCopyTextToClipboard(jsonText);
-        }
-    }
-    
-    fallbackCopyTextToClipboard(text) {
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        textArea.style.top = "0";
-        textArea.style.left = "0";
-        textArea.style.position = "fixed";
-        
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        
-        try {
-            const successful = document.execCommand('copy');
-            if (successful) {
-                this.showAlert('JSON copiado al portapapeles', 'success');
-            } else {
-                this.showAlert('No se pudo copiar al portapapeles', 'warning');
-            }
-        } catch (err) {
-            this.showAlert('Error copiando al portapapeles', 'danger');
-        }
-        
-        document.body.removeChild(textArea);
-    }
-    
-    downloadJson() {
-        const jsonText = document.getElementById('jsonPreview').textContent;
-        const dagId = document.getElementById('dag_id').value || 'dag_config';
-        
-        const blob = new Blob([jsonText], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = `${dagId}_config.json`;
-        
-        document.body.appendChild(a);
-        a.click();
-        
-        URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        
-        this.showAlert('Configuración descargada', 'success');
-    }
-    
-    resetForm() {
-        if (confirm('¿Estás seguro de que quieres limpiar todo el formulario?')) {
-            // Limpiar formulario principal
-            document.getElementById('dagConfigForm').reset();
-            
-            // Limpiar objetos JSON
-            this.jsonObjects = {};
-            this.renderJsonObjects();
-            
-            // Restaurar valores por defecto
-            this.setDefaultDateTime();
-            document.getElementById('max_active_runs').value = '1';
-            document.getElementById('owner').value = 'airflow';
-            document.getElementById('retries').value = '1';
-            document.getElementById('retry_delay').value = '300';
-            
-            // Limpiar validación de cron
-            this.setCronValidation('', '');
-            
-            // Limpiar vista previa
-            this.updateJsonPreview('{\n  "message": "Configura el DAG para ver la vista previa"\n}');
-            
-            this.showAlert('Formulario reiniciado', 'info');
+            btn.innerHTML = '<i class="fas fa-cog"></i> Generar Configuración';
+            btn.disabled = false;
         }
     }
     
     showAlert(message, type = 'info') {
-        // Crear elemento de alerta
+        // Crear alerta
         const alertDiv = document.createElement('div');
         alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
-        alertDiv.style.top = '20px';
-        alertDiv.style.right = '20px';
-        alertDiv.style.zIndex = '9999';
-        alertDiv.style.minWidth = '300px';
-        
+        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
         alertDiv.innerHTML = `
             ${message}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
@@ -1122,10 +841,170 @@ class DAGGenerator {
             }
         }, 5000);
     }
+    
+    copyJson() {
+        const jsonText = document.getElementById('jsonPreview').textContent;
+        
+        if (jsonText.includes('Configura el DAG')) {
+            this.showAlert('Primero genera la configuración', 'warning');
+            return;
+        }
+        
+        navigator.clipboard.writeText(jsonText).then(() => {
+            this.showAlert('JSON copiado al portapapeles!', 'success');
+        }).catch(err => {
+            console.error('Error copiando:', err);
+            this.showAlert('Error copiando al portapapeles', 'danger');
+        });
+    }
+    
+    downloadJson() {
+        const jsonText = document.getElementById('jsonPreview').textContent;
+        
+        if (jsonText.includes('Configura el DAG')) {
+            this.showAlert('Primero genera la configuración', 'warning');
+            return;
+        }
+        
+        const dagId = this.collectFormData().dag_id || 'mi_dag';
+        const filename = `${dagId}_config.json`;
+        
+        const blob = new Blob([jsonText], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        URL.revokeObjectURL(url);
+        this.showAlert(`Archivo ${filename} descargado!`, 'success');
+    }
+    
+    resetForm() {
+        if (confirm('¿Estás seguro de que quieres limpiar todo el formulario? Esta acción no se puede deshacer.')) {
+            document.getElementById('dagConfigForm').reset();
+            
+            // Limpiar objetos JSON personalizados
+            this.jsonObjects = {};
+            this.renderJsonObjects();
+            
+            // Restablecer fecha por defecto
+            this.setDefaultDateTime();
+            
+            // Limpiar validación cron
+            this.setCronValidation('', '');
+            
+            // Limpiar interpretación cron
+            const interpretationDiv = document.getElementById('cronInterpretation');
+            if (interpretationDiv) {
+                interpretationDiv.innerHTML = '<i class="fas fa-info-circle text-muted"></i> <span class="text-muted">Escribe una expresión cron para ver su interpretación</span>';
+                interpretationDiv.className = 'cron-interpretation mt-2 p-3 bg-light border rounded';
+            }
+            
+            // Limpiar preview
+            this.updateJsonPreview(`{
+  "message": "Configura el DAG para ver la vista previa"
+}`);
+            
+            this.showAlert('Formulario limpiado', 'info');
+        }
+    }
 }
 
-// Inicializar la aplicación cuando el DOM esté listo
-document.addEventListener('DOMContentLoaded', () => {
-    window.dagGenerator = new DAGGenerator();
+// Estilos CSS adicionales
+const additionalStyles = `
+    .json-object-card {
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        background-color: #f8f9fa;
+    }
+    
+    .properties-container {
+        max-height: 400px;
+        overflow-y: auto;
+        border: 1px solid #e9ecef;
+        border-radius: 4px;
+        padding: 10px;
+    }
+    
+    .property-item {
+        background-color: #ffffff;
+    }
+    
+    .property-item[data-type="string"] {
+        border-left: 4px solid #28a745;
+    }
+    
+    .property-item[data-type="number"] {
+        border-left: 4px solid #007bff;
+    }
+    
+    .property-item[data-type="boolean"] {
+        border-left: 4px solid #ffc107;
+    }
+    
+    .property-item[data-type="array"] {
+        border-left: 4px solid #6f42c1;
+    }
+    
+    .property-item[data-type="object"] {
+        border-left: 4px solid #fd7e14;
+    }
+    
+    .cron-interpretation {
+        font-size: 0.9em;
+        transition: all 0.3s ease;
+    }
+    
+    .cron-interpretation i {
+        margin-right: 8px;
+    }
+    
+    .alert {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .sticky-top {
+        top: 20px;
+    }
+    
+    .json-preview {
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-size: 11px;
+        line-height: 1.4;
+    }
+    
+    .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #80bdff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+    
+    .tooltip-icon:hover {
+        color: #007bff;
+    }
+    
+    details[open] summary {
+        margin-bottom: 10px;
+        font-weight: 600;
+    }
+`;
+
+// Inyectar estilos
+const styleSheet = document.createElement('style');
+styleSheet.textContent = additionalStyles;
+document.head.appendChild(styleSheet);
+
+// Inicializar aplicación
+let dagGenerator;
+document.addEventListener('DOMContentLoaded', function() {
+    dagGenerator = new DAGGenerator();
 });
-            

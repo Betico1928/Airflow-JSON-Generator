@@ -114,31 +114,142 @@ class DAGConfigGenerator:
                 'depends_on_past': False,
                 'email_on_failure': False,
                 'email_on_retry': False,
+                'email_on_success': False,
                 'retries': 1,
-                'retry_delay': 300  # en segundos
-            }
+                'retry_delay': 300,  # en segundos
+                'retry_exponential_backoff': False,
+                'max_retry_delay': None,
+                'execution_timeout': None,
+                'timeout': None,
+                'email': [],
+                'on_failure_callback': None,
+                'on_success_callback': None,
+                'on_retry_callback': None,
+                'trigger_rule': 'all_success',
+                'pool': None,
+                'pool_slots': 1,
+                'priority_weight': 1,
+                'weight_rule': 'downstream',
+                'queue': 'default',
+                'sla': None,
+                'provide_context': True
+            },
+            'concurrency': None,
+            'max_active_tasks': None,
+            'dagrun_timeout': None,
+            'sla_miss_callback': None,
+            'default_view': 'graph',
+            'orientation': 'LR',
+            'is_paused_upon_creation': True,
+            'access_control': {},
+            'params': {},
+            'doc_md': None,
+            'render_template_as_native_obj': False
         }
     
     def set_basic_config(self, config_data):
         """Establece la configuración básica del DAG"""
         for key, value in config_data.items():
-            if key in self.config:
-                if key == 'tags' and isinstance(value, str):
-                    self.config[key] = [tag.strip() for tag in value.split(',') if tag.strip()]
-                elif key == 'retry_delay' and isinstance(value, (int, float)):
-                    self.config['default_args']['retry_delay'] = int(value)
-                elif key in ['retries', 'max_active_runs'] and isinstance(value, (int, float)):
-                    if key == 'retries':
-                        self.config['default_args'][key] = int(value)
+            # Procesar tags
+            if key == 'tags' and isinstance(value, str):
+                self.config[key] = [tag.strip() for tag in value.split(',') if tag.strip()]
+            
+            # Procesar emails
+            elif key == 'email' and isinstance(value, str):
+                emails = [email.strip() for email in value.split(',') if email.strip()]
+                self.config['default_args']['email'] = emails
+            
+            # Procesar valores numéricos del default_args
+            elif key in ['retry_delay', 'max_retry_delay', 'execution_timeout', 'timeout', 'pool_slots', 
+                        'priority_weight', 'sla'] and isinstance(value, (int, float, str)):
+                if value and str(value).strip():
+                    try:
+                        numeric_value = int(float(value))
+                        self.config['default_args'][key] = numeric_value if numeric_value > 0 else None
+                    except (ValueError, TypeError):
+                        pass
+            
+            # Procesar valores numéricos del config principal
+            elif key in ['retries', 'max_active_runs', 'concurrency', 'max_active_tasks', 
+                        'dagrun_timeout'] and isinstance(value, (int, float, str)):
+                if value and str(value).strip():
+                    try:
+                        numeric_value = int(float(value))
+                        if key == 'retries':
+                            self.config['default_args'][key] = numeric_value
+                        else:
+                            self.config[key] = numeric_value if numeric_value > 0 else None
+                    except (ValueError, TypeError):
+                        pass
+            
+            # Procesar valores booleanos del default_args
+            elif key in ['email_on_failure', 'email_on_retry', 'email_on_success', 'depends_on_past', 
+                        'retry_exponential_backoff', 'provide_context']:
+                self.config['default_args'][key] = bool(value)
+            
+            # Procesar valores booleanos del config principal
+            elif key in ['catchup', 'is_paused_upon_creation', 'render_template_as_native_obj']:
+                self.config[key] = bool(value)
+            
+            # Procesar valores de texto del default_args
+            elif key in ['trigger_rule', 'pool', 'weight_rule', 'queue']:
+                if value and str(value).strip():
+                    self.config['default_args'][key] = str(value).strip()
+            
+            # Procesar valores de texto del config principal
+            elif key in ['default_view', 'orientation', 'doc_md']:
+                if value and str(value).strip():
+                    self.config[key] = str(value).strip()
+            
+            # Procesar callbacks (functions como strings)
+            elif key in ['on_failure_callback', 'on_success_callback', 'on_retry_callback', 'sla_miss_callback']:
+                if value and str(value).strip():
+                    self.config['default_args' if key.startswith('on_') else 'config'][key] = str(value).strip()
+            
+            # Procesar access_control como JSON
+            elif key == 'access_control' and value:
+                try:
+                    if isinstance(value, str):
+                        self.config[key] = json.loads(value)
                     else:
-                        self.config[key] = int(value)
-                elif key in ['email_on_failure', 'email_on_retry', 'depends_on_past', 'catchup']:
-                    if key in ['email_on_failure', 'email_on_retry', 'depends_on_past']:
-                        self.config['default_args'][key] = bool(value)
+                        self.config[key] = value
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            
+            # Procesar params como JSON
+            elif key == 'params' and value:
+                try:
+                    if isinstance(value, str):
+                        self.config[key] = json.loads(value)
                     else:
-                        self.config[key] = bool(value)
-                else:
-                    self.config[key] = value
+                        self.config[key] = value
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            
+            # Valores directos
+            elif key in self.config:
+                self.config[key] = value
+        
+        # Limpiar valores None o vacíos
+        self._clean_config()
+    
+    def _clean_config(self):
+        """Limpia valores None o vacíos de la configuración"""
+        # Limpiar default_args
+        self.config['default_args'] = {
+            k: v for k, v in self.config['default_args'].items() 
+            if v is not None and v != '' and v != []
+        }
+        
+        # Limpiar config principal
+        clean_config = {}
+        for k, v in self.config.items():
+            if k == 'default_args':
+                clean_config[k] = self.config['default_args']
+            elif v is not None and v != '' and v != [] and v != {}:
+                clean_config[k] = v
+        
+        self.config = clean_config
     
     def add_custom_objects(self, custom_objects):
         """Añade objetos JSON personalizados al config"""
@@ -153,16 +264,52 @@ class DAGConfigGenerator:
         """Valida la configuración actual"""
         errors = []
         
-        if not self.config['dag_id']:
+        if not self.config.get('dag_id'):
             errors.append("DAG ID es requerido")
         
-        if not self.config['start_date']:
+        if not self.config.get('start_date'):
             errors.append("Fecha de inicio es requerida")
         
-        if self.config['schedule_interval']:
+        # Validar emails si están presentes
+        emails = self.config.get('default_args', {}).get('email', [])
+        if emails:
+            email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            for email in emails:
+                if not re.match(email_pattern, email):
+                    errors.append(f"Email inválido: {email}")
+        
+        # Validar cron si está presente
+        if self.config.get('schedule_interval'):
             is_valid, message = CronHelper.validate_cron(self.config['schedule_interval'])
             if not is_valid:
                 errors.append(f"Expresión cron inválida: {message}")
+        
+        # Validar trigger_rule
+        valid_trigger_rules = [
+            'all_success', 'all_failed', 'all_done', 'one_success', 
+            'one_failed', 'none_failed', 'none_skipped', 'dummy'
+        ]
+        trigger_rule = self.config.get('default_args', {}).get('trigger_rule')
+        if trigger_rule and trigger_rule not in valid_trigger_rules:
+            errors.append(f"Trigger rule inválido: {trigger_rule}")
+        
+        # Validar weight_rule
+        valid_weight_rules = ['downstream', 'upstream', 'absolute']
+        weight_rule = self.config.get('default_args', {}).get('weight_rule')
+        if weight_rule and weight_rule not in valid_weight_rules:
+            errors.append(f"Weight rule inválido: {weight_rule}")
+        
+        # Validar default_view
+        valid_default_views = ['tree', 'graph', 'duration', 'gantt', 'landing_times']
+        default_view = self.config.get('default_view')
+        if default_view and default_view not in valid_default_views:
+            errors.append(f"Default view inválido: {default_view}")
+        
+        # Validar orientation
+        valid_orientations = ['LR', 'TB', 'RL', 'BT']
+        orientation = self.config.get('orientation')
+        if orientation and orientation not in valid_orientations:
+            errors.append(f"Orientación inválida: {orientation}")
         
         return errors
 

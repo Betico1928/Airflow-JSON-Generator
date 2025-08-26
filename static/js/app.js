@@ -768,7 +768,7 @@ class DAGGenerator {
             schedule_interval: dagConfig.schedule_interval || null,
             start_date: dagConfig.start_date || null,
             default_args: {
-                owner: dagConfig.owner || 'airflow',
+                owner: dagConfig.owner || 'avigna',
                 retries: dagConfig.retries || 1,
                 retry_delay: dagConfig.retry_delay || 300
             },

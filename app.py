@@ -109,7 +109,7 @@ class DAGConfigGenerator:
             'max_active_runs': 1,
             'tags': [],
             'default_args': {
-                'owner': 'airflow',
+                'owner': 'avigna',
                 'depends_on_past': False,
                 'email_on_failure': False,
                 'email_on_retry': False,
@@ -158,6 +158,10 @@ class DAGConfigGenerator:
                 emails = [email.strip() for email in value.split(',') if email.strip()]
                 self.config['default_args']['email'] = emails
             
+            # Procesar owner específicamente (NUEVA SECCIÓN)
+            elif key == 'owner' and value:
+                self.config['default_args']['owner'] = str(value).strip()
+            
             # Procesar valores numéricos del default_args
             elif key in ['retry_delay', 'max_retry_delay', 'execution_timeout', 'timeout', 'pool_slots', 
                         'priority_weight', 'sla'] and isinstance(value, (int, float, str)):
@@ -201,9 +205,13 @@ class DAGConfigGenerator:
                     self.config[key] = str(value).strip()
             
             # Procesar callbacks (functions como strings)
-            elif key in ['on_failure_callback', 'on_success_callback', 'on_retry_callback', 'sla_miss_callback']:
+            elif key in ['on_failure_callback', 'on_success_callback', 'on_retry_callback']:
                 if value and str(value).strip():
-                    self.config['default_args' if key.startswith('on_') else 'config'][key] = str(value).strip()
+                    self.config['default_args'][key] = str(value).strip()
+            
+            elif key == 'sla_miss_callback':
+                if value and str(value).strip():
+                    self.config[key] = str(value).strip()
             
             # Procesar access_control como JSON
             elif key == 'access_control' and value:
@@ -231,14 +239,19 @@ class DAGConfigGenerator:
         
         # Limpiar valores None o vacíos
         self._clean_config()
-    
+
     def _clean_config(self):
         """Limpia valores None o vacíos de la configuración"""
-        # Limpiar default_args
-        self.config['default_args'] = {
-            k: v for k, v in self.config['default_args'].items() 
-            if v is not None and v != '' and v != []
-        }
+        # Limpiar default_args - PRESERVAR owner siempre
+        cleaned_default_args = {}
+        for k, v in self.config['default_args'].items():
+            # Siempre preservar owner, incluso si es el valor por defecto
+            if k == 'owner':
+                cleaned_default_args[k] = v or 'avigna'  # Fallback si está vacío
+            elif v is not None and v != '' and v != []:
+                cleaned_default_args[k] = v
+        
+        self.config['default_args'] = cleaned_default_args
         
         # Limpiar config principal
         clean_config = {}
